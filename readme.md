@@ -17,10 +17,7 @@ config := oidc.Config{
     Scopes:       []string{"openid", "profile", "signicat.national_id"},
 }
 
-provider, err := oidc.NewClientMLE(ctx, &config)
-if err != nil {
-    log.Fatal("unable to initialize client")
-}
+provider := oidc.Must(oidc.NewClientMLE(ctx, &config))
 
 // These options will change based on your service provider. These are just examples for Signicat.
 opts := map[string]string{
