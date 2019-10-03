@@ -11,22 +11,18 @@ type JSONWebKeySet struct {
 	Keys []jose.JSONWebKey `json:"keys"`
 }
 
-// Key convenience method returns keys by key ID. Specification states
-// that a JWK Set "SHOULD" use distinct key IDs, but allows for some
-// cases where they are not distinct. Hence method returns a slice
-// of JSONWebKeys.
-func (s *JSONWebKeySet) Key(kid string) []jose.JSONWebKey {
-	var keys []jose.JSONWebKey
+// ById returns keys by key ID
+func (s *JSONWebKeySet) ById(kid string) (*jose.JSONWebKey, error) {
 	for _, key := range s.Keys {
 		if key.KeyID == kid {
-			keys = append(keys, key)
+			return &key, nil
 		}
 	}
 
-	return keys
+	return nil, errors.New("key not found")
 }
 
-// Convenience method for getting key(s) from keyset by use
+// Convenience method for getting key(s) from key set by use
 func (s *JSONWebKeySet) ByUse(use string) (*jose.JSONWebKey, error) {
 	for _, key := range s.Keys {
 		if key.Use == use {
