@@ -51,7 +51,7 @@ func main() {
 	log.Printf("Authorization URL: %s\n", url)
 
 	buf := bufio.NewReader(os.Stdin)
-	fmt.Print("Please complete the authentication in a browser, then input the code here:")
+	fmt.Print("Please complete the authentication in a browser, then input the code here: ")
 	input, err := buf.ReadBytes('\n')
 	if err != nil {
 		log.Fatal("unable to read code from command line:", err.Error())
