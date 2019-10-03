@@ -33,10 +33,7 @@ func main() {
 		RedirectUri:  "http://localhost:5000/redirect",
 		Scopes:       []string{"openid", "profile", "signicat.national_id"},
 	}
-	provider, err := oidc.NewClient(ctx, &config)
-	if err != nil {
-		log.Fatal("unable to initialize client")
-	}
+	provider := oidc.Must(oidc.NewClient(ctx, &config))
 
 	state := generateId()
 
