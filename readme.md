@@ -50,7 +50,7 @@ type User struct {
 ```
 
 Exchange the authorization code for  user info
-```
+```go
 var userInfo User
 err = provider.HandleCallback(code, &userInfo)
 if err != nil {
