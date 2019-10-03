@@ -1,6 +1,6 @@
 # Go OIDC MLE
 
-This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://github.com/coreos/go-oidc) libraries and implements OIDC authentication with optional encrypted request object. Message level encryption is a [Finnish peculiarity](https://developer.signicat.com/documentation/finnish-trust-network/full-message-level-encryption-for-ftn/).
+This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. Message level encryption is a [Finnish peculiarity](https://developer.signicat.com/documentation/finnish-trust-network/full-message-level-encryption-for-ftn/).
 
 # Usage
 
