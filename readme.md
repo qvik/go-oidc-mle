@@ -34,7 +34,7 @@ log.Printf("Authorization URL: %s\n", url)
 
 Open the authorization url in browser, complete the flow and copy the authorization code from the redirection page.
 
-Define a type you're expecting from the user info enpoint.
+Define a type you're expecting from the user info endpoint. Make sure to use json tags or implement UnmarshalJSON.
 ```go
 type User struct {
 	Subject    string `json:"sub"`
@@ -51,7 +51,7 @@ Exchange the authorization code for  user info
 var userInfo User
 err = provider.HandleCallback(code, &userInfo)
 if err != nil {
-    log.Fatalln("failed to get user info")
+    log.Fatalln("unable to handle callback:", err.Error())
 }
 
 resp := struct {
