@@ -1,5 +1,8 @@
 package main
 
+// This example implements example strong authentication flow. The credentials are
+// Signicat's test credentials.
+
 import (
 	"context"
 	"encoding/json"

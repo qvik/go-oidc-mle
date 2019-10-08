@@ -1,6 +1,6 @@
 package oidc
 
-// Config type will contain all of our configs and secrets
+// Config represents the configuration parameters needed for initialising OIDCClient or OIDClientEncrypted.
 type Config struct {
 	ClientId     string
 	ClientSecret string

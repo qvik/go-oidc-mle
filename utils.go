@@ -10,6 +10,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
+// newEncrypted is a convenience method for creating a jose.Encrypter using a JWK key.
 func newEncrypter(key *jose.JSONWebKey) (jose.Encrypter, error) {
 	alg := jose.KeyAlgorithm("RSA-OAEP")
 	enc := jose.ContentEncryption("A256CBC-HS512")
@@ -24,6 +25,8 @@ func newEncrypter(key *jose.JSONWebKey) (jose.Encrypter, error) {
 	}, &options)
 }
 
+// providerRemoteKeys is a convenience method for fetching and unmashaling the provider jwks from the jwks_uri.
+// Returns a JWSONWebKeySet containing the keys.
 func providerRemoteKeys(jwksUri string) (*JSONWebKeySet, error) {
 	response, err := http.Get(jwksUri)
 	if err != nil {

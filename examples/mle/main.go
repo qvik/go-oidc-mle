@@ -1,5 +1,8 @@
 package main
 
+// This example implements example strong authentication flow using message level encryption. The credentials are
+// Signicat's test credentials.
+
 import (
 	"bufio"
 	"context"
