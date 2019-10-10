@@ -20,7 +20,7 @@ import (
 type OIDCInterface interface {
 	Exchange(context.Context, string, map[string]string) (*oauth2.Token, error)
 	AuthRequestURL(string, map[string]string) (string, error)
-	Verify(string) (*oidc.IDToken, error)
+	Verify(context.Context, string) (*oidc.IDToken, error)
 	UserInfo(context.Context, oauth2.TokenSource, interface{}) error
 	HandleCallback(context.Context, string, interface{}) error
 }
@@ -147,7 +147,7 @@ func (o *OIDCClient) Exchange(ctx context.Context, code string, options map[stri
 		return nil, fmt.Errorf("no id_token field in oauth2 token")
 	}
 
-	_, err = o.Verify(rawIDToken)
+	_, err = o.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("unable to verify id_token")
 	}
@@ -164,9 +164,8 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]string) (st
 }
 
 // Verify verifies the signature of the token.
-func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
+func (o *OIDCClient) Verify(ctx context.Context, token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
-	ctx := context.Background()
 	return verifier.Verify(ctx, token)
 }
 
@@ -247,9 +246,8 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 }
 
 // Verify verifies the signature of a token
-func (o *OIDCClientEncrypted) Verify(token string) (*oidc.IDToken, error) {
+func (o *OIDCClientEncrypted) Verify(ctx context.Context, token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
-	ctx := context.Background()
 	return verifier.Verify(ctx, token)
 }
 
@@ -279,7 +277,7 @@ func (o *OIDCClientEncrypted) Exchange(ctx context.Context, code string, options
 		return nil, errors.New("unable to decrypt id_token")
 	}
 
-	_, err = o.Verify(string(decryptedIdToken))
+	_, err = o.Verify(ctx, string(decryptedIdToken))
 	if err != nil {
 		return nil, fmt.Errorf("unable to verify id_token: %v", err.Error())
 	}
