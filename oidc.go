@@ -18,11 +18,11 @@ import (
 
 // OIDCInterface is a common interface for OIDC clients to implement.
 type OIDCInterface interface {
-	Exchange(context.Context, string, map[string]string) (*oauth2.Token, error)
+	Exchange(string, map[string]string) (*oauth2.Token, error)
 	AuthRequestURL(string, map[string]string) (string, error)
-	Verify(context.Context, string) (*oidc.IDToken, error)
-	UserInfo(context.Context, oauth2.TokenSource, interface{}) error
-	HandleCallback(context.Context, string, interface{}) error
+	Verify(string) (*oidc.IDToken, error)
+	UserInfo(oauth2.TokenSource, interface{}) error
+	HandleCallback(string, interface{}) error
 }
 
 // Must is a convenience function to make sure that the OIDC client is successfully initialised or it panics.
@@ -57,6 +57,7 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 		oidcConfig:   oidcConfig,
 		provider:     oidcProvider,
 		config:       config,
+		ctx:          ctx,
 	}, nil
 }
 
@@ -121,6 +122,7 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 		decryptionKey:   &localKey,
 		verificationKey: parsedRemotePubSignKey,
 		config:          config,
+		ctx:             ctx,
 	}, nil
 }
 
@@ -130,15 +132,16 @@ type OIDCClient struct {
 	oidcConfig   *oidc.Config
 	provider     *oidc.Provider
 	config       *Config
+	ctx          context.Context
 }
 
 // Exchange exchanges the authorization code to a token.
-func (o *OIDCClient) Exchange(ctx context.Context, code string, options map[string]string) (*oauth2.Token, error) {
+func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		opts = append(opts, oauth2.SetAuthURLParam(key, value))
 	}
-	oauth2Token, err := o.oauth2Config.Exchange(ctx, code, opts...)
+	oauth2Token, err := o.oauth2Config.Exchange(o.ctx, code, opts...)
 	if err != nil {
 		return nil, errors.New("unable to exchange code for token")
 	}
@@ -147,7 +150,7 @@ func (o *OIDCClient) Exchange(ctx context.Context, code string, options map[stri
 		return nil, fmt.Errorf("no id_token field in oauth2 token")
 	}
 
-	_, err = o.Verify(ctx, rawIDToken)
+	_, err = o.Verify(rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("unable to verify id_token")
 	}
@@ -164,14 +167,14 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]string) (st
 }
 
 // Verify verifies the signature of the token.
-func (o *OIDCClient) Verify(ctx context.Context, token string) (*oidc.IDToken, error) {
+func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
-	return verifier.Verify(ctx, token)
+	return verifier.Verify(o.ctx, token)
 }
 
 // UserInfo fetches user information.
-func (o *OIDCClient) UserInfo(ctx context.Context, token oauth2.TokenSource, user interface{}) error {
-	userInfo, err := o.provider.UserInfo(ctx, token)
+func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
+	userInfo, err := o.provider.UserInfo(o.ctx, token)
 	if err != nil {
 		log.Println("unable to fetch user info:", err.Error())
 		return err
@@ -186,16 +189,16 @@ func (o *OIDCClient) UserInfo(ctx context.Context, token oauth2.TokenSource, use
 
 // HandleCallback is a convenience function which exchanges the authorization code to token and then uses the token
 // to request user information from user info endpoint. The implementation does not use message level encryption.
-func (o *OIDCClient) HandleCallback(ctx context.Context, code string, user interface{}) error {
+func (o *OIDCClient) HandleCallback(code string, user interface{}) error {
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
 	}
-	oauth2Token, err := o.Exchange(ctx, code, options)
+	oauth2Token, err := o.Exchange(code, options)
 	if err != nil {
 		return err
 	}
 
-	return o.UserInfo(ctx, oauth2.StaticTokenSource(oauth2Token), &user)
+	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
 }
 
 // OIDCClientEncrypted wraps oauth2 and oidc libraries and provides convenience functions for implementing OIDC
@@ -209,6 +212,7 @@ type OIDCClientEncrypted struct {
 	decryptionKey   *jose.JSONWebKey
 	verificationKey *jose.JSONWebKey
 	config          *Config
+	ctx             context.Context
 }
 
 // AuthCodeURLEncrypted returns the URL of the authorization request with encrypted request object.
@@ -246,18 +250,18 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 }
 
 // Verify verifies the signature of a token
-func (o *OIDCClientEncrypted) Verify(ctx context.Context, token string) (*oidc.IDToken, error) {
+func (o *OIDCClientEncrypted) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
-	return verifier.Verify(ctx, token)
+	return verifier.Verify(o.ctx, token)
 }
 
 // Exchange exchanges the authorization code to a token.
-func (o *OIDCClientEncrypted) Exchange(ctx context.Context, code string, options map[string]string) (*oauth2.Token, error) {
+func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		opts = append(opts, oauth2.SetAuthURLParam(key, value))
 	}
-	oauth2Token, err := o.oauth2Config.Exchange(ctx, code, opts...)
+	oauth2Token, err := o.oauth2Config.Exchange(o.ctx, code, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch oauth2 token: %v", err.Error())
 	}
@@ -277,7 +281,7 @@ func (o *OIDCClientEncrypted) Exchange(ctx context.Context, code string, options
 		return nil, errors.New("unable to decrypt id_token")
 	}
 
-	_, err = o.Verify(ctx, string(decryptedIdToken))
+	_, err = o.Verify(string(decryptedIdToken))
 	if err != nil {
 		return nil, fmt.Errorf("unable to verify id_token: %v", err.Error())
 	}
@@ -289,7 +293,7 @@ type userInfoURL struct {
 }
 
 // UserInfo fetches user information from client provider.
-func (o *OIDCClientEncrypted) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource, dest interface{}) error {
+func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest interface{}) error {
 	var userInfoURL userInfoURL
 	err := o.provider.Claims(&userInfoURL)
 	if err != nil {
@@ -307,7 +311,7 @@ func (o *OIDCClientEncrypted) UserInfo(ctx context.Context, tokenSource oauth2.T
 	}
 	token.SetAuthHeader(req)
 
-	response, err := doRequest(ctx, req)
+	response, err := doRequest(o.ctx, req)
 	if err != nil {
 		return err
 	}
@@ -340,14 +344,14 @@ func (o *OIDCClientEncrypted) UserInfo(ctx context.Context, tokenSource oauth2.T
 
 // HandleCallback is a convenience function which exchanges the authorization code to token and then uses the token
 // to request user information from user info endpoint. The implementation uses message level encryption.
-func (o *OIDCClientEncrypted) HandleCallback(ctx context.Context, code string, user interface{}) error {
+func (o *OIDCClientEncrypted) HandleCallback(code string, user interface{}) error {
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
 	}
-	oauth2Token, err := o.Exchange(ctx, code, options)
+	oauth2Token, err := o.Exchange(code, options)
 	if err != nil {
 		return err
 	}
 
-	return o.UserInfo(ctx, oauth2.StaticTokenSource(oauth2Token), &user)
+	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
 }
