@@ -93,7 +93,7 @@ func main() {
 		}
 
 		var userInfo User
-		err := provider.HandleCallback(code, &userInfo)
+		err := provider.HandleCallback(ctx, code, &userInfo)
 		if err != nil {
 			body := `{"error": "failed to exchange authorization code to token"}`
 			http.Error(w, body, http.StatusInternalServerError)

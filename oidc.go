@@ -18,11 +18,11 @@ import (
 
 // OIDCInterface is a common interface for OIDC clients to implement.
 type OIDCInterface interface {
-	Exchange(string, map[string]string) (*oauth2.Token, error)
+	Exchange(context.Context, string, map[string]string) (*oauth2.Token, error)
 	AuthRequestURL(string, map[string]string) (string, error)
 	Verify(string) (*oidc.IDToken, error)
-	UserInfo(oauth2.TokenSource, interface{}) error
-	HandleCallback(string, interface{}) error
+	UserInfo(context.Context, oauth2.TokenSource, interface{}) error
+	HandleCallback(context.Context, string, interface{}) error
 }
 
 // Must is a convenience function to make sure that the OIDC client is successfully initialised or it panics.
@@ -38,18 +38,16 @@ func Must(client OIDCInterface, err error) OIDCInterface {
 func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
 	}
 
 	oidcConfig := &oidc.Config{
 		ClientID: config.ClientId,
 	}
-
-	oauth2Endpoint := oidcProvider.Endpoint()
 	oauth2Config := oauth2.Config{
 		ClientID:     config.ClientId,
 		ClientSecret: config.ClientSecret,
-		Endpoint:     oauth2Endpoint,
+		Endpoint:     oidcProvider.Endpoint(),
 		RedirectURL:  config.RedirectUri,
 		Scopes:       config.Scopes,
 	}
@@ -66,7 +64,7 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, error) {
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
 	}
 
 	type jwksUriJSON struct {
@@ -79,7 +77,7 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 		return nil, err
 	}
 
-	remoteKeySet, err := providerRemoteKeys(jwksUri.Uri)
+	remoteKeySet, err := providerRemoteKeys(ctx, jwksUri.Uri)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +99,10 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 	oidcConfig := &oidc.Config{
 		ClientID: config.ClientId,
 	}
-	oauth2Endpoint := oidcProvider.Endpoint()
 	oauth2Config := oauth2.Config{
 		ClientID:     config.ClientId,
 		ClientSecret: config.ClientSecret,
-		Endpoint:     oauth2Endpoint,
+		Endpoint:     oidcProvider.Endpoint(),
 		RedirectURL:  config.RedirectUri,
 		Scopes:       config.Scopes,
 	}
@@ -136,12 +133,11 @@ type OIDCClient struct {
 }
 
 // Exchange exchanges the authorization code to a token.
-func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
+func (o *OIDCClient) Exchange(ctx context.Context, code string, options map[string]string) (*oauth2.Token, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		opts = append(opts, oauth2.SetAuthURLParam(key, value))
 	}
-	ctx := context.Background()
 	oauth2Token, err := o.oauth2Config.Exchange(ctx, code, opts...)
 	if err != nil {
 		return nil, errors.New("unable to exchange code for token")
@@ -175,8 +171,7 @@ func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 }
 
 // UserInfo fetches user information.
-func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
-	ctx := context.Background()
+func (o *OIDCClient) UserInfo(ctx context.Context, token oauth2.TokenSource, user interface{}) error {
 	userInfo, err := o.provider.UserInfo(ctx, token)
 	if err != nil {
 		log.Println("unable to fetch user info:", err.Error())
@@ -192,16 +187,16 @@ func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error 
 
 // HandleCallback is a convenience function which exchanges the authorization code to token and then uses the token
 // to request user information from user info endpoint. The implementation does not use message level encryption.
-func (o *OIDCClient) HandleCallback(code string, user interface{}) error {
+func (o *OIDCClient) HandleCallback(ctx context.Context, code string, user interface{}) error {
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
 	}
-	oauth2Token, err := o.Exchange(code, options)
+	oauth2Token, err := o.Exchange(ctx, code, options)
 	if err != nil {
 		return err
 	}
 
-	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
+	return o.UserInfo(ctx, oauth2.StaticTokenSource(oauth2Token), &user)
 }
 
 // OIDCClientEncrypted wraps oauth2 and oidc libraries and provides convenience functions for implementing OIDC
@@ -259,12 +254,11 @@ func (o *OIDCClientEncrypted) Verify(token string) (*oidc.IDToken, error) {
 }
 
 // Exchange exchanges the authorization code to a token.
-func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
+func (o *OIDCClientEncrypted) Exchange(ctx context.Context, code string, options map[string]string) (*oauth2.Token, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		opts = append(opts, oauth2.SetAuthURLParam(key, value))
 	}
-	ctx := context.Background()
 	oauth2Token, err := o.oauth2Config.Exchange(ctx, code, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch oauth2 token: %v", err.Error())
@@ -297,7 +291,7 @@ type userInfoURL struct {
 }
 
 // UserInfo fetches user information from client provider.
-func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest interface{}) error {
+func (o *OIDCClientEncrypted) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource, dest interface{}) error {
 	var userInfoURL userInfoURL
 	err := o.provider.Claims(&userInfoURL)
 	if err != nil {
@@ -315,7 +309,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 	}
 	token.SetAuthHeader(req)
 
-	response, err := http.DefaultClient.Do(req)
+	response, err := doRequest(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -348,14 +342,14 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 
 // HandleCallback is a convenience function which exchanges the authorization code to token and then uses the token
 // to request user information from user info endpoint. The implementation uses message level encryption.
-func (o *OIDCClientEncrypted) HandleCallback(code string, user interface{}) error {
+func (o *OIDCClientEncrypted) HandleCallback(ctx context.Context, code string, user interface{}) error {
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
 	}
-	oauth2Token, err := o.Exchange(code, options)
+	oauth2Token, err := o.Exchange(ctx, code, options)
 	if err != nil {
 		return err
 	}
 
-	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
+	return o.UserInfo(ctx, oauth2.StaticTokenSource(oauth2Token), &user)
 }

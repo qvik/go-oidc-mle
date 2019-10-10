@@ -59,7 +59,7 @@ func main() {
 
 	code := strings.TrimSuffix(string(input), "\n")
 	var userInfo User
-	err = provider.HandleCallback(code, &userInfo)
+	err = provider.HandleCallback(ctx, code, &userInfo)
 	if err != nil {
 		log.Fatalln("failed to get user info")
 	}

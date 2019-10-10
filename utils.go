@@ -1,12 +1,14 @@
 package oidc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 
+	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
 )
 
@@ -27,21 +29,30 @@ func newEncrypter(key *jose.JSONWebKey) (jose.Encrypter, error) {
 
 // providerRemoteKeys is a convenience method for fetching and unmashaling the provider jwks from the jwks_uri.
 // Returns a JWSONWebKeySet containing the keys.
-func providerRemoteKeys(jwksUri string) (*JSONWebKeySet, error) {
-	response, err := http.Get(jwksUri)
+func providerRemoteKeys(ctx context.Context, jwksUri string) (*JSONWebKeySet, error) {
+	req, err := http.NewRequest("GET", jwksUri, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch jwks: %v", err.Error())
+		return nil, err
 	}
-	defer response.Body.Close()
+	resp, err := doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read response body: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s: %s", resp.Status, body)
+	}
 
 	type jwksJSON struct {
 		Keys []jose.JSONWebKey `json:"keys"`
 	}
 	var jwks jwksJSON
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err.Error())
-	}
 	err = json.Unmarshal(body, &jwks)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal jwks: %v", err.Error())
@@ -54,4 +65,13 @@ func providerRemoteKeys(jwksUri string) (*JSONWebKeySet, error) {
 	return &JSONWebKeySet{
 		Keys: jwks.Keys,
 	}, nil
+}
+
+// doRequest executes http request using either http.DefaultClient or the client specified in context if it's available.
+func doRequest(ctx context.Context, request *http.Request) (*http.Response, error) {
+	client := http.DefaultClient
+	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
+		client = c
+	}
+	return client.Do(request.WithContext(ctx))
 }
