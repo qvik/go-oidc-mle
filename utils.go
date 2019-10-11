@@ -75,3 +75,11 @@ func doRequest(ctx context.Context, request *http.Request) (*http.Response, erro
 	}
 	return client.Do(request.WithContext(ctx))
 }
+
+// statusCodeIs2xx checks if the status code is between 200 and 299 range inclusive.
+func statusCodeIs2xx(statusCode int) bool {
+	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+		return false
+	}
+	return true
+}

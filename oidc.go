@@ -321,8 +321,8 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 		return err
 	}
 	defer response.Body.Close()
-	if statusCode := response.StatusCode; statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("unable to fetch authorization token. received status code: %d", statusCode)
+	if !statusCodeIs2xx(response.StatusCode) {
+		return fmt.Errorf("unable to fetch authorization token. received status code: %d", response.StatusCode)
 	}
 
 	webToken, err := jwt.ParseSignedAndEncrypted(string(body))
