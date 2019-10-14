@@ -152,7 +152,7 @@ func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.T
 
 	_, err = o.Verify(rawIDToken)
 	if err != nil {
-		return nil, fmt.Errorf("unable to verify id_token")
+		return nil, fmt.Errorf("unable to verify signature")
 	}
 	return oauth2Token, nil
 }
