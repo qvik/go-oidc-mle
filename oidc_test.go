@@ -356,7 +356,6 @@ var _ = Describe("OIDCClient Tests", func() {
 
 				accessToken, err := buildSignedJWTToken(key, accessTokenClaims)
 				if err != nil {
-					fmt.Println(err)
 					Fail("unable to create accessToken")
 				}
 				mockClient = newMockClient(func(req *http.Request) *http.Response {
