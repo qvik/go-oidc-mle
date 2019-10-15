@@ -1,7 +1,8 @@
-on: [push, pull_request]
-name: Run tests
+on: pull_request
+name: Run tests on several platforms
+branch: master
 jobs:
-  test:
+  test_all_platforms:
     strategy:
       matrix:
         go-version: [1.13]
