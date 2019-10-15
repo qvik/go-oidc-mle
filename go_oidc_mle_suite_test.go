@@ -9,5 +9,5 @@ import (
 
 func TestGoMleOidc(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GoOidcMle Suite")
+	RunSpecs(t, "go-oidc-mle suite")
 }
