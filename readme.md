@@ -24,7 +24,7 @@ opts := map[string]string{
     "acr_values": fmt.Sprintf("urn:signicat:oidc:method:ftn-op-auth"),
     "ui_locales": "en",
 }
-state := "do_not_do_this"
+state := "do_not_do_this_in_real_implementation"
 url, err := provider.AuthRequestURL(state, opts)
 if err != nil {
     log.Fatal("failed to create authorization request url:", err.Error())
@@ -46,7 +46,7 @@ type User struct {
 }
 ```
 
-Exchange the authorization code for  user info
+Exchange the authorization code for user info.
 ```go
 var userInfo User
 err = provider.HandleCallback(code, &userInfo)
@@ -64,6 +64,8 @@ if err != nil {
 }
 log.Println(string(data))
 ```
+
+This short example omitted several important steps such as validation of state and nonce.
 
 # Examples
 
