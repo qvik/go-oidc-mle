@@ -1,5 +1,5 @@
 on: push
-name: Run tests on linux
+name: Tests on linux
 jobs:
   test_all_platforms:
     runs-on: ubuntu-latest

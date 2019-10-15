@@ -2,7 +2,7 @@
 
 This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. Message level encryption is a [Finnish peculiarity](https://developer.signicat.com/documentation/finnish-trust-network/full-message-level-encryption-for-ftn/).
 
-# Usage
+## Usage
 
 ```go
 ctx := context.Background()
@@ -67,6 +67,12 @@ log.Println(string(data))
 
 This short example omitted several important steps such as validation of state and nonce.
 
-# Examples
+## Examples
 
 More examples available in [examples](https://github.com/haaja/go-oidc-mle/blob/master/examples) directory.
+
+## Status
+
+[![Actions Status](https://github.com/haaja/go-oidc-mle/workflows/Tests%20on%20linux/badge.svg)](https://github.com/haaja/go-oidc-mle/actions)
+
+[![Actions Status](https://github.com/haaja/go-oidc-mle/workflows/Tests%20on%20all%20platforms/badge.svg)](https://github.com/haaja/go-oidc-mle/actions)

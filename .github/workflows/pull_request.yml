@@ -1,5 +1,5 @@
 on: pull_request
-name: Run tests on several platforms
+name: Tests on all platforms
 jobs:
   test_all_platforms:
     strategy:
