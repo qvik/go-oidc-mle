@@ -249,8 +249,9 @@ var _ = Describe("OIDCClient Tests", func() {
 			})
 
 			It("successfully exchanges authorization code for token", func() {
+				keyId := generateId()
 				key, _ := rsa.GenerateKey(rand.Reader, 2048)
-				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: "test key id", Algorithm: "RS256", Use: "sig"}
+				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
 				now := time.Now()
@@ -274,11 +275,11 @@ var _ = Describe("OIDCClient Tests", func() {
 					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
 				}
 
-				idToken, err := buildSignedJWTToken(key, idTokenClaims)
+				idToken, err := buildSignedJWTToken(key, keyId, idTokenClaims)
 				if err != nil {
 					Fail("unable to create idToken")
 				}
-				accessToken, err := buildSignedJWTToken(key, accessTokenClaims)
+				accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
 				if err != nil {
 					fmt.Println(err)
 					Fail("unable to create accessToken")
@@ -341,8 +342,9 @@ var _ = Describe("OIDCClient Tests", func() {
 			})
 
 			It("fails when oauth2 token does not contain id_token", func() {
+				keyId := generateId()
 				key, _ := rsa.GenerateKey(rand.Reader, 2048)
-				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: "test key id", Algorithm: "RS256", Use: "sig"}
+				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 				if err != nil {
 					Fail("unable to marshal generated public key")
@@ -359,7 +361,7 @@ var _ = Describe("OIDCClient Tests", func() {
 					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
 				}
 
-				accessToken, err := buildSignedJWTToken(key, accessTokenClaims)
+				accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
 				if err != nil {
 					Fail("unable to create accessToken")
 				}
@@ -515,13 +517,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 })
 
-func buildSignedJWTToken(key *rsa.PrivateKey, claims jwt.Claims) (string, error) {
+func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims jwt.Claims) (string, error) {
 	var signerOpts = jose.SignerOptions{}
 	signerOpts.WithType("JWT")
-	signerOpts.WithHeader("kid", "test key id")
+	signerOpts.WithHeader("kid", keyId)
 
+	alg := jose.SignatureAlgorithm("RS256")
 	signingKey := jose.SigningKey{
-		Algorithm: "RS256",
+		Algorithm: alg,
 		Key:       key,
 	}
 	rsaSigner, err := jose.NewSigner(signingKey, &signerOpts)
