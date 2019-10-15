@@ -1,18 +1,16 @@
 on: pull_request
 name: Run tests on several platforms
-branch: master
 jobs:
   test_all_platforms:
     strategy:
       matrix:
-        go-version: [1.13]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: 1.13
       - name: Checkout code
         uses: actions/checkout@v1
       - name: Run tests
