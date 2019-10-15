@@ -181,7 +181,7 @@ var _ = Describe("OIDCClient Tests", func() {
 					"ui_locales": "fi",
 				}
 				ctx := context.Background()
-				client, _ := NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 
 				authUrl, err := client.AuthRequestURL(state, options)
 				Expect(err).To(BeNil())
@@ -310,7 +310,7 @@ var _ = Describe("OIDCClient Tests", func() {
 				})
 
 				ctx := context.Background()
-				client, _ := NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 				options := map[string]string{
 					"client_id": "exampleClientId",
 				}
@@ -324,7 +324,7 @@ var _ = Describe("OIDCClient Tests", func() {
 			It("fails when signature is invalid", func() {
 				ctx := context.Background()
 				code := generateId()
-				client, _ := NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 				options := map[string]string{
 					"client_id": "exampleClientId",
 				}
@@ -339,6 +339,9 @@ var _ = Describe("OIDCClient Tests", func() {
 				key, _ := rsa.GenerateKey(rand.Reader, 2048)
 				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: "test key id", Algorithm: "RS256", Use: "sig"}
 				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+				if err != nil {
+					Fail("unable to marshal generated public key")
+				}
 
 				in10mins := time.Now().Add(10 * time.Minute)
 				accessTokenClaims := jwt.Claims{
@@ -393,7 +396,7 @@ var _ = Describe("OIDCClient Tests", func() {
 				})
 
 				ctx := context.Background()
-				client, _ := NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 				options := map[string]string{
 					"client_id": "exampleClientId",
 				}
@@ -409,6 +412,9 @@ var _ = Describe("OIDCClient Tests", func() {
 				key, _ := rsa.GenerateKey(rand.Reader, 2048)
 				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: "test key id", Algorithm: "RS256", Use: "sig"}
 				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+				if err != nil {
+					Fail("unable to marshal generated public key")
+				}
 
 				mockClient = newMockClient(func(req *http.Request) *http.Response {
 					headers := http.Header{
@@ -441,7 +447,7 @@ var _ = Describe("OIDCClient Tests", func() {
 				})
 
 				ctx := context.Background()
-				client, _ := NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 				options := map[string]string{
 					"client_id": "exampleClientId",
 				}
