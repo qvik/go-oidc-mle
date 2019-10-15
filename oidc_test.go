@@ -58,6 +58,7 @@ var _ = Describe("Must tests", func() {
 	})
 })
 
+// This is the openid configuration that is used in unit tests.
 const openidConfiguration = `{
 	"issuer":"https://example.com/oidc",
 	"authorization_endpoint":"https://example.com/oidc/authorize",
@@ -93,6 +94,7 @@ const openidConfiguration = `{
 	"backchannel_logout_session_supported":false
 }`
 
+// remoteJwks describes the service provider's public keys for signing and encryption.
 const remoteJwks = `{
 	"keys":[
 		{
@@ -114,6 +116,7 @@ const remoteJwks = `{
 	]
 }`
 
+// remoteEncKey is the provided as a separate constant to avoid unnecessary repetition.
 const remoteEncKey = `{
 	"kty":"RSA",
 	"e":"AQAB",
