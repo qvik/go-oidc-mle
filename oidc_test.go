@@ -58,6 +58,62 @@ var _ = Describe("Must tests", func() {
 	})
 })
 
+const openidConfiguration = `{
+	"issuer":"https://example.com/oidc",
+	"authorization_endpoint":"https://example.com/oidc/authorize",
+	"token_endpoint":"https://example.com/oidc/token",
+	"userinfo_endpoint":"https://example.com/oidc/userinfo",
+	"jwks_uri":"https://example.com/oidc/jwks.json",
+	"scopes_supported":["openid","profile","email","address","phone","offline_access"],
+	"response_types_supported":["code"],
+	"response_modes_supported":["query"],
+	"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
+	"subject_types_supported":["pairwise"],
+	"id_token_signing_alg_values_supported":["RS256"],
+	"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
+	"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
+	"userinfo_signing_alg_values_supported":["RS256"],
+	"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
+	"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
+	"request_object_signing_alg_values_supported":["RS256"],
+	"request_object_encryption_alg_values_supported":["RSA-OAEP"],
+	"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
+	"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
+	"claim_types_supported":["normal","aggregated"],
+	"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
+	"service_documentation":"https://developer.example.com/",
+	"claims_parameter_supported":true,
+	"request_parameter_supported":true,
+	"request_uri_parameter_supported":false,
+	"require_request_uri_registration":true,
+	"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
+	"check_session_iframe":"https://example.com/oidc/session/check",
+	"end_session_endpoint":"https://example.com/oidc/session/end",
+	"backchannel_logout_supported":true,
+	"backchannel_logout_session_supported":false
+}`
+
+const remoteJwks = `{
+	"keys":[
+		{
+			"kty":"RSA",
+			"e":"AQAB",
+			"use":"sig",
+			"kid":"any.oidc-signature-preprod.test.jwk.v.1",
+			"alg":"RS256",
+			"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
+		}
+		,{
+			"kty":"RSA",
+			"e":"AQAB",
+			"use":"enc",
+			"kid":"any.oidc-encryption-preprod.test.jwk.v.1",
+			"alg":"RSA-OAEP",
+			"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
+		}
+	]
+}`
+
 var _ = Describe("OIDCClient Tests", func() {
 	var (
 		mockClient *http.Client
@@ -79,63 +135,9 @@ var _ = Describe("OIDCClient Tests", func() {
 					"Content-Type": {"application/json"},
 				}
 				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-					body := `{
-							"issuer":"https://example.com/oidc",
-							"authorization_endpoint":"https://example.com/oidc/authorize",
-							"token_endpoint":"https://example.com/oidc/token",
-							"userinfo_endpoint":"https://example.com/oidc/userinfo",
-							"jwks_uri":"https://example.com/oidc/jwks.json",
-							"scopes_supported":["openid","profile","email","address","phone","offline_access"],
-							"response_types_supported":["code"],
-							"response_modes_supported":["query"],
-							"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
-							"subject_types_supported":["pairwise"],
-							"id_token_signing_alg_values_supported":["RS256"],
-							"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
-							"userinfo_signing_alg_values_supported":["RS256"],
-							"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
-							"request_object_signing_alg_values_supported":["RS256"],
-							"request_object_encryption_alg_values_supported":["RSA-OAEP"],
-							"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
-							"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
-							"claim_types_supported":["normal","aggregated"],
-							"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
-							"service_documentation":"https://developer.example.com/",
-							"claims_parameter_supported":true,
-							"request_parameter_supported":true,
-							"request_uri_parameter_supported":false,
-							"require_request_uri_registration":true,
-							"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
-							"check_session_iframe":"https://example.com/oidc/session/check",
-							"end_session_endpoint":"https://example.com/oidc/session/end",
-							"backchannel_logout_supported":true,
-							"backchannel_logout_session_supported":false
-						}`
-					return newMockResponse(http.StatusOK, headers, body)
+					return newMockResponse(http.StatusOK, headers, openidConfiguration)
 				} else if req.URL.Path == "/oidc/jwks.json" {
-					body := `{
-							"keys":[
-								{
-									"kty":"RSA",
-									"e":"AQAB",
-									"use":"sig",
-									"kid":"any.oidc-signature-preprod.test.jwk.v.1",
-									"alg":"RS256",
-									"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
-								}
-								,{
-									"kty":"RSA",
-									"e":"AQAB",
-									"use":"enc",
-									"kid":"any.oidc-encryption-preprod.test.jwk.v.1",
-									"alg":"RSA-OAEP",
-									"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
-								}
-							]
-						}`
-					return newMockResponse(http.StatusOK, headers, body)
+					return newMockResponse(http.StatusOK, headers, remoteJwks)
 				} else {
 					body := `{"error":"invalid path"}`
 					return newMockResponse(http.StatusInternalServerError, headers, body)
@@ -214,41 +216,7 @@ var _ = Describe("OIDCClient Tests", func() {
 					}
 					path := req.URL.Path
 					if path == "/oidc/.well-known/openid-configuration" {
-						body := `{
-							"issuer":"https://example.com/oidc",
-							"authorization_endpoint":"https://example.com/oidc/authorize",
-							"token_endpoint":"https://example.com/oidc/token",
-							"userinfo_endpoint":"https://example.com/oidc/userinfo",
-							"jwks_uri":"https://example.com/oidc/jwks.json",
-							"scopes_supported":["openid","profile","email","address","phone","offline_access"],
-							"response_types_supported":["code"],
-							"response_modes_supported":["query"],
-							"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
-							"subject_types_supported":["pairwise"],
-							"id_token_signing_alg_values_supported":["RS256"],
-							"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
-							"userinfo_signing_alg_values_supported":["RS256"],
-							"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
-							"request_object_signing_alg_values_supported":["RS256"],
-							"request_object_encryption_alg_values_supported":["RSA-OAEP"],
-							"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
-							"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
-							"claim_types_supported":["normal","aggregated"],
-							"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
-							"service_documentation":"https://developer.example.com/",
-							"claims_parameter_supported":true,
-							"request_parameter_supported":true,
-							"request_uri_parameter_supported":false,
-							"require_request_uri_registration":true,
-							"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
-							"check_session_iframe":"https://example.com/oidc/session/check",
-							"end_session_endpoint":"https://example.com/oidc/session/end",
-							"backchannel_logout_supported":true,
-							"backchannel_logout_session_supported":false
-						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
 					} else if path == "/oidc/token" {
 						body := `{
 							"access_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiItWC1RLTFnbUktSWxSLXpoOGdkc0NOZ0FqUlowWmpYOSIsInNjcCI6WyJvcGVuaWQiLCJwcm9maWxlIl0sInNubSI6ImRlbW8iLCJpc3MiOiJodHRwczpcL1wvcHJlcHJvZC5zaWduaWNhdC5jb21cL29pZGMiLCJleHAiOjE1NzA3MTc1NTEsImlhdCI6MTU3MDcxNTc1MSwianRpIjoiRnlzVkVPaENURzJUSjg0ZWxIZDVOTDZkNVhtWUp2OC0iLCJjaWQiOiJkZW1vLXByZXByb2QifQ.Lm8pqn0F3euTOttBz3VEryIz-VoeBAABDxjhcCC3hMqa5-nl5SJIg7xIoCQ8hSsqcRmxPRSF6gbyKJU52TwH3miVVYoemBzVL0cqxwDXxBc5oZhUSEr3CkVME34URd-q9ThQugJXWzSrrvxtgdbklb_eEijF1BuZc0zOMtsLXdV88foy-p6PeGQ7EhRpsoa_DEB88zzE5AGpStG4PLotYs0ev3E5sLgViAsqAKrPV26V2gHpdEnYFqAJz6AoSA7LntM_9im1TF3VnLRt467-2a8qYPuDcsnjudjajElmAYEZ9qQ6B0cUtNJV-dU8aDF1vJ7GpgolY05psUJVXcbNAg",
@@ -260,27 +228,7 @@ var _ = Describe("OIDCClient Tests", func() {
 						}`
 						return newMockResponse(http.StatusOK, headers, body)
 					} else if path == "/oidc/jwks.json" {
-						body := `{
-							"keys":[
-								{
-									"kty":"RSA",
-									"e":"AQAB",
-									"use":"sig",
-									"kid":"any.oidc-signature-preprod.test.jwk.v.1",
-									"alg":"RS256",
-									"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
-								}
-								,{
-									"kty":"RSA",
-									"e":"AQAB",
-									"use":"enc",
-									"kid":"any.oidc-encryption-preprod.test.jwk.v.1",
-									"alg":"RSA-OAEP",
-									"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
-								}
-							]
-						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, remoteJwks)
 					} else {
 						body := `{"error":"invalid path"}`
 						return newMockResponse(http.StatusInternalServerError, headers, body)
@@ -329,41 +277,7 @@ var _ = Describe("OIDCClient Tests", func() {
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						body := `{
-							"issuer":"https://example.com/oidc",
-							"authorization_endpoint":"https://example.com/oidc/authorize",
-							"token_endpoint":"https://example.com/oidc/token",
-							"userinfo_endpoint":"https://example.com/oidc/userinfo",
-							"jwks_uri":"https://example.com/oidc/jwks.json",
-							"scopes_supported":["openid","profile","email","address","phone","offline_access"],
-							"response_types_supported":["code"],
-							"response_modes_supported":["query"],
-							"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
-							"subject_types_supported":["pairwise"],
-							"id_token_signing_alg_values_supported":["RS256"],
-							"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
-							"userinfo_signing_alg_values_supported":["RS256"],
-							"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
-							"request_object_signing_alg_values_supported":["RS256"],
-							"request_object_encryption_alg_values_supported":["RSA-OAEP"],
-							"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
-							"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
-							"claim_types_supported":["normal","aggregated"],
-							"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
-							"service_documentation":"https://developer.example.com/",
-							"claims_parameter_supported":true,
-							"request_parameter_supported":true,
-							"request_uri_parameter_supported":false,
-							"require_request_uri_registration":true,
-							"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
-							"check_session_iframe":"https://example.com/oidc/session/check",
-							"end_session_endpoint":"https://example.com/oidc/session/end",
-							"backchannel_logout_supported":true,
-							"backchannel_logout_session_supported":false
-						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
 					} else if req.URL.Path == "/oidc/token" {
 						body := fmt.Sprintf(`{
 							"access_token":"%s",
@@ -447,41 +361,7 @@ var _ = Describe("OIDCClient Tests", func() {
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						body := `{
-							"issuer":"https://example.com/oidc",
-							"authorization_endpoint":"https://example.com/oidc/authorize",
-							"token_endpoint":"https://example.com/oidc/token",
-							"userinfo_endpoint":"https://example.com/oidc/userinfo",
-							"jwks_uri":"https://example.com/oidc/jwks.json",
-							"scopes_supported":["openid","profile","email","address","phone","offline_access"],
-							"response_types_supported":["code"],
-							"response_modes_supported":["query"],
-							"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
-							"subject_types_supported":["pairwise"],
-							"id_token_signing_alg_values_supported":["RS256"],
-							"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
-							"userinfo_signing_alg_values_supported":["RS256"],
-							"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
-							"request_object_signing_alg_values_supported":["RS256"],
-							"request_object_encryption_alg_values_supported":["RSA-OAEP"],
-							"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
-							"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
-							"claim_types_supported":["normal","aggregated"],
-							"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
-							"service_documentation":"https://developer.example.com/",
-							"claims_parameter_supported":true,
-							"request_parameter_supported":true,
-							"request_uri_parameter_supported":false,
-							"require_request_uri_registration":true,
-							"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
-							"check_session_iframe":"https://example.com/oidc/session/check",
-							"end_session_endpoint":"https://example.com/oidc/session/end",
-							"backchannel_logout_supported":true,
-							"backchannel_logout_session_supported":false
-						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
 					} else if req.URL.Path == "/oidc/token" {
 						body := fmt.Sprintf(`{
 							"access_token":"%s",
@@ -535,41 +415,7 @@ var _ = Describe("OIDCClient Tests", func() {
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						body := `{
-							"issuer":"https://example.com/oidc",
-							"authorization_endpoint":"https://example.com/oidc/authorize",
-							"token_endpoint":"https://example.com/oidc/token",
-							"userinfo_endpoint":"https://example.com/oidc/userinfo",
-							"jwks_uri":"https://example.com/oidc/jwks.json",
-							"scopes_supported":["openid","profile","email","address","phone","offline_access"],
-							"response_types_supported":["code"],
-							"response_modes_supported":["query"],
-							"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
-							"subject_types_supported":["pairwise"],
-							"id_token_signing_alg_values_supported":["RS256"],
-							"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
-							"userinfo_signing_alg_values_supported":["RS256"],
-							"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
-							"request_object_signing_alg_values_supported":["RS256"],
-							"request_object_encryption_alg_values_supported":["RSA-OAEP"],
-							"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
-							"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
-							"claim_types_supported":["normal","aggregated"],
-							"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
-							"service_documentation":"https://developer.example.com/",
-							"claims_parameter_supported":true,
-							"request_parameter_supported":true,
-							"request_uri_parameter_supported":false,
-							"require_request_uri_registration":true,
-							"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
-							"check_session_iframe":"https://example.com/oidc/session/check",
-							"end_session_endpoint":"https://example.com/oidc/session/end",
-							"backchannel_logout_supported":true,
-							"backchannel_logout_session_supported":false
-						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
 					} else if req.URL.Path == "/oidc/token" {
 						body := `{"error":"bad request"}`
 						return newMockResponse(http.StatusBadRequest, headers, body)
@@ -633,63 +479,9 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				}
 
 				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-					body := `{
-							"issuer":"https://example.com/oidc",
-							"authorization_endpoint":"https://example.com/oidc/authorize",
-							"token_endpoint":"https://example.com/oidc/token",
-							"userinfo_endpoint":"https://example.com/oidc/userinfo",
-							"jwks_uri":"https://example.com/oidc/jwks.json",
-							"scopes_supported":["openid","profile","email","address","phone","offline_access"],
-							"response_types_supported":["code"],
-							"response_modes_supported":["query"],
-							"grant_types_supported":["authorization_code","refresh_token","client_credentials"],
-							"subject_types_supported":["pairwise"],
-							"id_token_signing_alg_values_supported":["RS256"],
-							"id_token_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"id_token_encryption_enc_values_supported":["A128CBC-HS256"],
-							"userinfo_signing_alg_values_supported":["RS256"],
-							"userinfo_encryption_alg_values_supported":["RSA1_5","RSA-OAEP","dir","A128KW","A256KW","ECDH-ES"],
-							"userinfo_encryption_enc_values_supported":["A128CBC-HS256"],
-							"request_object_signing_alg_values_supported":["RS256"],
-							"request_object_encryption_alg_values_supported":["RSA-OAEP"],
-							"request_object_encryption_enc_values_supported":["A128CBC-HS256","A256CBC-HS512","A128GCM","A256GCM"],
-							"token_endpoint_auth_methods_supported":["client_secret_basic","client_secret_post","client_secret_jwt","private_key_jwt"],
-							"claim_types_supported":["normal","aggregated"],
-							"claims_supported":["sub","name","family_name","given_name","middle_name","nickname","preferred_username","profile","picture","website","gender","birthdate","zoneinfo","locale","updated_at","email","email_verified","phone_number","phone_number_verified","address","address.formatted","address.street_address","address.locality","address.region","address.postal_code","address.country"],
-							"service_documentation":"https://developer.example.com/",
-							"claims_parameter_supported":true,
-							"request_parameter_supported":true,
-							"request_uri_parameter_supported":false,
-							"require_request_uri_registration":true,
-							"op_policy_uri":"https://www.example.com/privacy-and-cookies/",
-							"check_session_iframe":"https://example.com/oidc/session/check",
-							"end_session_endpoint":"https://example.com/oidc/session/end",
-							"backchannel_logout_supported":true,
-							"backchannel_logout_session_supported":false
-						}`
-					return newMockResponse(http.StatusOK, headers, body)
+					return newMockResponse(http.StatusOK, headers, openidConfiguration)
 				} else if req.URL.Path == "/oidc/jwks.json" {
-					body := `{
-							"keys":[
-								{
-									"kty":"RSA",
-									"e":"AQAB",
-									"use":"sig",
-									"kid":"any.oidc-signature-preprod.test.jwk.v.1",
-									"alg":"RS256",
-									"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
-								}
-								,{
-									"kty":"RSA",
-									"e":"AQAB",
-									"use":"enc",
-									"kid":"any.oidc-encryption-preprod.test.jwk.v.1",
-									"alg":"RSA-OAEP",
-									"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
-								}
-							]
-						}`
-					return newMockResponse(http.StatusOK, headers, body)
+					return newMockResponse(http.StatusOK, headers, remoteJwks)
 				} else {
 					body := `{"error":"invalid path"}`
 					return newMockResponse(http.StatusInternalServerError, headers, body)
