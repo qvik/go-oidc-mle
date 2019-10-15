@@ -13,8 +13,8 @@ import (
 var _ = Describe("Jwks tests", func() {
 	Describe("ByUse", func() {
 		It("Finds a key from keyset by use", func() {
-			key1, _ := generateKey("example1", "enc")
-			key2, _ := generateKey("example2", "sig")
+			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
+			key2, _ := generateKey("example2", "RSA-OAEP", "sig")
 			keyset := JSONWebKeySet{
 				Keys: []jose.JSONWebKey{
 					*key1,
@@ -27,7 +27,7 @@ var _ = Describe("Jwks tests", func() {
 		})
 
 		It("Throws an error if no keys by usage are found", func() {
-			key1, _ := generateKey("example1", "enc")
+			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
 			keyset := JSONWebKeySet{
 				Keys: []jose.JSONWebKey{
 					*key1,
@@ -42,8 +42,8 @@ var _ = Describe("Jwks tests", func() {
 
 	Describe("ById", func() {
 		It("Finds a key from keyset by use", func() {
-			key1, _ := generateKey("example1", "enc")
-			key2, _ := generateKey("example2", "sig")
+			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
+			key2, _ := generateKey("example2", "RSA-OAEP", "sig")
 			keyset := JSONWebKeySet{
 				Keys: []jose.JSONWebKey{
 					*key1,
@@ -56,7 +56,7 @@ var _ = Describe("Jwks tests", func() {
 		})
 
 		It("Throws an error if no keys by usage are found", func() {
-			key1, _ := generateKey("example1", "enc")
+			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
 			keyset := JSONWebKeySet{
 				Keys: []jose.JSONWebKey{
 					*key1,
@@ -70,11 +70,11 @@ var _ = Describe("Jwks tests", func() {
 	})
 })
 
-func generateKey(keyId, use string) (*jose.JSONWebKey, error) {
+func generateKey(keyId, alg, use string) (*jose.JSONWebKey, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, err
 	}
 
-	return &jose.JSONWebKey{Key: key, KeyID: keyId, Algorithm: "RSA-OAEP", Use: use}, nil
+	return &jose.JSONWebKey{Key: key, KeyID: keyId, Algorithm: alg, Use: use}, nil
 }
