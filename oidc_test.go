@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
@@ -533,4 +534,9 @@ func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims jwt.Claims) (
 	}
 
 	return jwt.Signed(rsaSigner).Claims(claims).CompactSerialize()
+}
+
+func generateId() string {
+	id := uuid.Must(uuid.NewV4())
+	return id.String()
 }
