@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
@@ -176,13 +175,11 @@ func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
 	userInfo, err := o.provider.UserInfo(o.ctx, token)
 	if err != nil {
-		log.Println("unable to fetch user info:", err.Error())
-		return err
+		return fmt.Errorf("unable to fetch user info: %v", err.Error())
 	}
 	err = userInfo.Claims(&user)
 	if err != nil {
-		log.Println("unable to marshal claims", err.Error())
-		return err
+		return fmt.Errorf("unable to marshal claims: %v", err.Error())
 	}
 	return nil
 }
