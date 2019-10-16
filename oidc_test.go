@@ -59,6 +59,15 @@ var _ = Describe("Must tests", func() {
 	})
 })
 
+type User struct {
+	Subject    string `json:"sub"`
+	Name       string `json:"name"`
+	SSN        string `json:"signicat.national_id"`
+	GivenName  string `json:"given_name"`
+	Locale     string `json:"locale"`
+	FamilyName string `json:"family_name"`
+}
+
 // This is the openid configuration that is used in unit tests.
 const openidConfiguration = `{
 	"issuer":"https://example.com/oidc",
@@ -450,6 +459,98 @@ var _ = Describe("OIDCClient Tests", func() {
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("unable to exchange code for token"))
 				Expect(oauth2Token).To(BeNil())
+			})
+		})
+
+		Describe("UserInfo", func() {
+			BeforeEach(func() {
+				config = Config{
+					ClientId:     "demo-preprod",
+					ClientSecret: "exampleClientSecret",
+					Endpoint:     "https://example.com/oidc",
+					RedirectUri:  "http://localhost:5000/redirect",
+					Scopes:       []string{"openid", "profile", "signicat.national_id"},
+				}
+
+				mockClient = newMockClient(func(req *http.Request) *http.Response {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					path := req.URL.Path
+					if path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					} else if path == "/oidc/token" {
+						body := `{
+							"access_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiItWC1RLTFnbUktSWxSLXpoOGdkc0NOZ0FqUlowWmpYOSIsInNjcCI6WyJvcGVuaWQiLCJwcm9maWxlIl0sInNubSI6ImRlbW8iLCJpc3MiOiJodHRwczpcL1wvcHJlcHJvZC5zaWduaWNhdC5jb21cL29pZGMiLCJleHAiOjE1NzA3MTc1NTEsImlhdCI6MTU3MDcxNTc1MSwianRpIjoiRnlzVkVPaENURzJUSjg0ZWxIZDVOTDZkNVhtWUp2OC0iLCJjaWQiOiJkZW1vLXByZXByb2QifQ.Lm8pqn0F3euTOttBz3VEryIz-VoeBAABDxjhcCC3hMqa5-nl5SJIg7xIoCQ8hSsqcRmxPRSF6gbyKJU52TwH3miVVYoemBzVL0cqxwDXxBc5oZhUSEr3CkVME34URd-q9ThQugJXWzSrrvxtgdbklb_eEijF1BuZc0zOMtsLXdV88foy-p6PeGQ7EhRpsoa_DEB88zzE5AGpStG4PLotYs0ev3E5sLgViAsqAKrPV26V2gHpdEnYFqAJz6AoSA7LntM_9im1TF3VnLRt467-2a8qYPuDcsnjudjajElmAYEZ9qQ6B0cUtNJV-dU8aDF1vJ7GpgolY05psUJVXcbNAg",
+							"token_type":"Bearer",
+							"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+							"scope":"openid profile",
+							"expires_in":1800,
+							"id_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJhY3IiOiJ1cm46c2lnbmljYXQ6b2lkYzptZXRob2Q6aWRpbiIsInN1YiI6Ii1YLVEtMWdtSS1JbFItemg4Z2RzQ05nQWpSWjBaalg5IiwiYXVkIjoiZGVtby1wcmVwcm9kIiwibmJmIjoxNTcwNzE1NzUxLCJhdXRoX3RpbWUiOjE1NzA3MTU3NDAsImFtciI6InVybjprc2k6bmFtZXM6U0FNTDoyLjA6YWM6aURJTiIsImlzcyI6Imh0dHBzOlwvXC9wcmVwcm9kLnNpZ25pY2F0LmNvbVwvb2lkYyIsImV4cCI6MTU3MDcxOTM1MSwiaWF0IjoxNTcwNzE1NzUxfQ.T9h62zn_IWGu4s9yyW0sf7HmGW2zLZajTF56l-_xDTG_tyTAryuKW9O6fixLkZoz8Mfh-AKBSqPt5bj8Z642mmVNaFZLhrvjtTyO_xvQc448BBKmVu7doPH4fBAFeA8IX-kUGEPN6djH3gLC75UifxG_URkHTqJSCpZXVNIjAy5g7m2_DISm4n3-uijWMMnwQoGPn1FvM2agwNIuMPLuGmmF5-YLGs8T7_9AasSUlYhMpjiATkolcajrXSMAizCKreRldxXK8dLwlh0UyFcosaHyVr0hiAa3LRV9i4crcfyKsh-NfFw6eSvZfmMA-UWt-jlSpB2g8mQIqPxJbbr8Xg"
+						}`
+						return newMockResponse(http.StatusOK, headers, body)
+					} else if path == "/oidc/jwks.json" {
+						return newMockResponse(http.StatusOK, headers, remoteJwks)
+					} else if path == "/oidc/userinfo" {
+						body := `{
+						   "sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+						   "name":"Väinö Tunnistus",
+						   "given_name":"Väinö",
+						   "locale":"FI",
+							"signicat.national_id": "123456-123A",
+						   "ftn.idpId":"fi-op",
+						   "family_name":"Tunnistus"
+						}`
+						return newMockResponse(http.StatusOK, headers, body)
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body)
+					}
+				})
+			})
+
+			It("successfully fetches the user info", func() {
+				ctx := context.Background()
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				var user User
+				oauth2Token := oauth2.Token{}
+				err := client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &user)
+				Expect(err).To(BeNil())
+				Expect(user.Name).To(Equal("Väinö Tunnistus"))
+				Expect(user.Subject).To(Equal("IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr"))
+				Expect(user.GivenName).To(Equal("Väinö"))
+				Expect(user.Locale).To(Equal("FI"))
+				Expect(user.FamilyName).To(Equal("Tunnistus"))
+			})
+
+			It("fails when userinfo endpoint fails to return user info", func() {
+				mockClient = newMockClient(func(req *http.Request) *http.Response {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					path := req.URL.Path
+					if path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					} else if path == "/oidc/jwks.json" {
+						return newMockResponse(http.StatusOK, headers, remoteJwks)
+					} else if path == "/oidc/userinfo" {
+						body := `{"error": "internal server error"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body)
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body)
+					}
+				})
+
+				ctx := context.Background()
+				oauth2Token := oauth2.Token{}
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				var user User
+				err := client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &user)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal(`unable to fetch user info: Internal Server Error: {"error": "internal server error"}`))
 			})
 		})
 	})
