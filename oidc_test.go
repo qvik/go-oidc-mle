@@ -553,6 +553,159 @@ var _ = Describe("OIDCClient Tests", func() {
 				Expect(err.Error()).To(Equal(`unable to fetch user info: Internal Server Error: {"error": "internal server error"}`))
 			})
 		})
+
+		Describe("HandleCallback", func() {
+			BeforeEach(func() {
+				config = Config{
+					ClientId:     "demo-preprod",
+					ClientSecret: "exampleClientSecret",
+					Endpoint:     "https://example.com/oidc",
+					RedirectUri:  "http://localhost:5000/redirect",
+					Scopes:       []string{"openid", "profile", "signicat.national_id"},
+				}
+			})
+
+			It("successfully handles the callback", func() {
+				keyId := generateId()
+				key, _ := rsa.GenerateKey(rand.Reader, 2048)
+				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
+				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+
+				now := time.Now()
+				in10mins := time.Now().Add(10 * time.Minute)
+				idTokenClaims := jwt.Claims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  []string{"demo-preprod"},
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+				}
+
+				accessTokenClaims := jwt.Claims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  []string{"demo-preprod"},
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+				}
+
+				idToken, err := buildSignedJWTToken(key, keyId, idTokenClaims)
+				if err != nil {
+					Fail("unable to create idToken")
+				}
+				accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
+				if err != nil {
+					fmt.Println(err)
+					Fail("unable to create accessToken")
+				}
+
+				mockClient = newMockClient(func(req *http.Request) *http.Response {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					} else if req.URL.Path == "/oidc/token" {
+						body := fmt.Sprintf(`{
+							"access_token":"%s",
+							"token_type":"Bearer",
+							"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+							"scope":"openid profile",
+							"expires_in":600,
+							"id_token":"%s"
+						}`, accessToken, idToken)
+						return newMockResponse(http.StatusOK, headers, body)
+					} else if req.URL.Path == "/oidc/jwks.json" {
+						body := fmt.Sprintf(`{
+								"keys":[
+									%s,
+									%s
+							]
+						}`, keyJWKSMarshaled, remoteEncKey)
+						return newMockResponse(http.StatusOK, headers, body)
+					} else if req.URL.Path == "/oidc/userinfo" {
+						body := `{
+						   "sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+						   "name":"Väinö Tunnistus",
+						   "given_name":"Väinö",
+						   "locale":"FI",
+							"signicat.national_id": "123456-123A",
+						   "ftn.idpId":"fi-op",
+						   "family_name":"Tunnistus"
+						}`
+						return newMockResponse(http.StatusOK, headers, body)
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body)
+					}
+				})
+
+				ctx := context.Background()
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				var user User
+				code := generateId()
+				err = client.HandleCallback(code, &user)
+				Expect(err).To(BeNil())
+				Expect(user.Name).To(Equal("Väinö Tunnistus"))
+				Expect(user.Subject).To(Equal("IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr"))
+				Expect(user.GivenName).To(Equal("Väinö"))
+				Expect(user.Locale).To(Equal("FI"))
+				Expect(user.FamilyName).To(Equal("Tunnistus"))
+			})
+
+			It("fails when userinfo endpoint fails to return user info", func() {
+				keyId := generateId()
+				key, _ := rsa.GenerateKey(rand.Reader, 2048)
+				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
+				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+
+				mockClient = newMockClient(func(req *http.Request) *http.Response {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					} else if req.URL.Path == "/oidc/token" {
+						body := `{"error": "internal server error"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body)
+					} else if req.URL.Path == "/oidc/jwks.json" {
+						body := fmt.Sprintf(`{
+								"keys":[
+									%s,
+									%s
+							]
+						}`, keyJWKSMarshaled, remoteEncKey)
+						return newMockResponse(http.StatusOK, headers, body)
+					} else if req.URL.Path == "/oidc/userinfo" {
+						body := `{
+						   "sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+						   "name":"Väinö Tunnistus",
+						   "given_name":"Väinö",
+						   "locale":"FI",
+							"signicat.national_id": "123456-123A",
+						   "ftn.idpId":"fi-op",
+						   "family_name":"Tunnistus"
+						}`
+						return newMockResponse(http.StatusOK, headers, body)
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body)
+					}
+				})
+				ctx := context.Background()
+				client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				code := generateId()
+				var user User
+				err = client.HandleCallback(code, user)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("unable to exchange code for token"))
+			})
+		})
 	})
 })
 
