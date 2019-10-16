@@ -14,7 +14,8 @@ import (
 
 // newEncrypted is a convenience method for creating a jose.Encrypter using a JWK key.
 func newEncrypter(key *jose.JSONWebKey) (jose.Encrypter, error) {
-	alg := jose.KeyAlgorithm("RSA-OAEP")
+	alg := jose.KeyAlgorithm(key.Algorithm)
+	// TODO(janne): the encryption algorithm should be taken from the oidc-configuration
 	enc := jose.ContentEncryption("A256CBC-HS512")
 	options := jose.EncrypterOptions{
 		Compression:  "",
