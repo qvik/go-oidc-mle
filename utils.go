@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"golang.org/x/oauth2"
@@ -60,7 +59,7 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*JSONWebKeySet, er
 	}
 
 	if len(jwks.Keys) != 2 {
-		log.Fatal("the number of remote keys is invalid. expected 2, got:", len(jwks.Keys))
+		return nil, fmt.Errorf("the number of remote keys is invalid. expected 2, got: %d", len(jwks.Keys))
 	}
 
 	return &JSONWebKeySet{

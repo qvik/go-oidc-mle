@@ -768,8 +768,175 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(client).To(BeNil())
 			Expect(err.Error()).To(Equal(fmt.Sprintf("unable to initialize client: %s: %s", http.StatusText(http.StatusInternalServerError), body)))
 		})
-	})
 
+		It("fails to initialize client if jwks_uri property does not contain two keys", func() {
+			mockClient = newMockClient(func(req *http.Request) *http.Response {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					remoteJwks := `{
+						"keys":[
+							{
+								"kty":"RSA",
+								"e":"AQAB",
+								"use":"sig",
+								"kid":"any.oidc-signature-preprod.test.jwk.v.1",
+								"alg":"RS256",
+								"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
+							}
+						]
+					}`
+					return newMockResponse(http.StatusOK, headers, remoteJwks)
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body)
+				}
+			})
+
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("the number of remote keys is invalid. expected 2, got: 1"))
+			Expect(client).To(BeNil())
+		})
+
+		It("fails to initialize client if jwks_uri property does not public key for signing", func() {
+			mockClient = newMockClient(func(req *http.Request) *http.Response {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					remoteJwks := `{
+						"keys":[
+							{
+								"kty":"RSA",
+								"e":"AQAB",
+								"use":"enc",
+								"kid":"any.oidc-signature-preprod.test.jwk.v.1",
+								"alg":"RSA-OAEP",
+								"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
+							}
+							,{
+								"kty":"RSA",
+								"e":"AQAB",
+								"use":"enc",
+								"kid":"any.oidc-encryption-preprod.test.jwk.v.1",
+								"alg":"RSA-OAEP",
+								"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
+							}
+						]
+					}`
+					return newMockResponse(http.StatusOK, headers, remoteJwks)
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body)
+				}
+			})
+
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("unable to find provider's public key for signing"))
+			Expect(client).To(BeNil())
+		})
+
+		It("fails to initialize client if jwks_uri property does not public key for encryption", func() {
+			mockClient = newMockClient(func(req *http.Request) *http.Response {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					remoteJwks := `{
+						"keys":[
+							{
+								"kty":"RSA",
+								"e":"AQAB",
+								"use":"sig",
+								"kid":"any.oidc-signature-preprod.test.jwk.v.1",
+								"alg":"RS256",
+								"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
+							}
+							,{
+								"kty":"RSA",
+								"e":"AQAB",
+								"use":"sig",
+								"kid":"any.oidc-signing2-preprod.test.jwk.v.1",
+								"alg":"RS256",
+								"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
+							}
+						]
+					}`
+					return newMockResponse(http.StatusOK, headers, remoteJwks)
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body)
+				}
+			})
+
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("unable to find provider's public key for encryption"))
+			Expect(client).To(BeNil())
+		})
+
+		It("fails to initialize client if providers public key fails to marshal", func() {
+			mockClient = newMockClient(func(req *http.Request) *http.Response {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					remoteJwks := `{
+						"keys":[
+							{
+								"kty":"RSA",
+								"e":"AQAB",
+								"use":"sig",
+								"kid":"any.oidc-signature-preprod.test.jwk.v.1",
+								"alg":"RS256",
+								"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
+							}
+							,{
+								"kty":"RSA1",
+								"e":"AQAB",
+								"use":"enc",
+								"kid":"any.oidc-encryption-preprod.test.jwk.v.1",
+								"alg":"RSA-OAEP",
+								"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
+							}
+						]
+					}`
+					return newMockResponse(http.StatusOK, headers, remoteJwks)
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body)
+				}
+			})
+
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("failed to unmarshal jwks: square/go-jose: unknown json web key type 'RSA1'"))
+			Expect(client).To(BeNil())
+		})
+	})
 })
 
 func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims jwt.Claims) (string, error) {

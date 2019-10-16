@@ -84,11 +84,11 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 
 	parsedRemotePubEncKey, err := remoteKeySet.ByUse("enc")
 	if err != nil {
-		return nil, err
+		return nil, errors.New("unable to find provider's public key for encryption")
 	}
 	parsedRemotePubSignKey, err := remoteKeySet.ByUse("sig")
 	if err != nil {
-		return nil, err
+		return nil, errors.New("unable to find provider's public key for signing")
 	}
 
 	encrypter, err := newEncrypter(parsedRemotePubEncKey)
