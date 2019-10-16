@@ -82,20 +82,6 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 		return nil, err
 	}
 
-	parsedRemotePubEncKey, err := remoteKeySet.ByUse("enc")
-	if err != nil {
-		return nil, errors.New("unable to find provider's public key for encryption")
-	}
-	parsedRemotePubSignKey, err := remoteKeySet.ByUse("sig")
-	if err != nil {
-		return nil, errors.New("unable to find provider's public key for signing")
-	}
-
-	encrypter, err := newEncrypter(parsedRemotePubEncKey)
-	if err != nil {
-		return nil, err
-	}
-
 	oidcConfig := &oidc.Config{
 		ClientID: config.ClientId,
 	}
@@ -114,14 +100,13 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 	}
 
 	return &OIDCClientEncrypted{
-		oauth2Config:    &oauth2Config,
-		oidcConfig:      oidcConfig,
-		provider:        oidcProvider,
-		encrypter:       encrypter,
-		decryptionKey:   &localKey,
-		verificationKey: parsedRemotePubSignKey,
-		config:          config,
-		ctx:             ctx,
+		oauth2Config:  &oauth2Config,
+		oidcConfig:    oidcConfig,
+		provider:      oidcProvider,
+		decryptionKey: &localKey,
+		remoteKeySet:  remoteKeySet,
+		config:        config,
+		ctx:           ctx,
 	}, nil
 }
 
@@ -205,9 +190,9 @@ type OIDCClientEncrypted struct {
 	oauth2Config    *oauth2.Config
 	oidcConfig      *oidc.Config
 	provider        *oidc.Provider
-	encrypter       jose.Encrypter
 	decryptionKey   *jose.JSONWebKey
 	verificationKey *jose.JSONWebKey
+	remoteKeySet    *JSONWebKeySet
 	config          *Config
 	ctx             context.Context
 }
@@ -232,7 +217,16 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 		return "", err
 	}
 
-	data, err := o.encrypter.Encrypt(requestJSON)
+	encryptionKey, err := o.remoteKeySet.ByUse("enc")
+	if err != nil {
+		return "", err
+	}
+	encrypter, err := newEncrypter(encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := encrypter.Encrypt(requestJSON)
 	if err != nil {
 		return "", err
 	}
@@ -332,7 +326,11 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 		return err
 	}
 
-	err = decryptedData.Claims(o.verificationKey, dest)
+	verificationKey, err := o.remoteKeySet.ById(decryptedData.Headers[0].KeyID)
+	if err != nil {
+		return fmt.Errorf("unable to find key with keyId '%s'", decryptedData.Headers[0].KeyID)
+	}
+	err = decryptedData.Claims(verificationKey, dest)
 	if err != nil {
 		return err
 	}
