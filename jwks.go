@@ -6,10 +6,8 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-// JSONWebKeySet represents a JWK key set.
-type JSONWebKeySet struct {
-	Keys []jose.JSONWebKey `json:"keys"`
-}
+// JSONWebKeySet represents a JWK key set. We are not using jose.JSONWebKeySet directly as we need ByUse function.
+type JSONWebKeySet jose.JSONWebKeySet
 
 // ById returns keys by key ID from the key set
 func (s *JSONWebKeySet) ById(kid string) (*jose.JSONWebKey, error) {
