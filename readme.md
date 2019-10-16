@@ -5,7 +5,6 @@ This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc]
 ## Usage
 
 ```go
-ctx := context.Background()
 // These credentials are taken from here: https://github.com/signicat/OIDC-MLE/blob/master/py-ftn-example/ftn-mle-example.py
 // For real implementation you'll need your own credentials and JWK.
 config := oidc.Config{
@@ -17,6 +16,7 @@ config := oidc.Config{
     Scopes:       []string{"openid", "profile", "signicat.national_id"},
 }
 
+ctx := context.Background()
 provider := oidc.Must(oidc.NewClientMLE(ctx, &config))
 
 // These options will change based on your service provider. These are just examples for Signicat.
