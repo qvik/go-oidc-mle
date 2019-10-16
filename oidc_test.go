@@ -628,13 +628,13 @@ var _ = Describe("OIDCClient Tests", func() {
 						return newMockResponse(http.StatusOK, headers, body)
 					} else if req.URL.Path == "/oidc/userinfo" {
 						body := `{
-						   "sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
-						   "name":"Väinö Tunnistus",
-						   "given_name":"Väinö",
-						   "locale":"FI",
+							"sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+							"name":"Väinö Tunnistus",
+							"given_name":"Väinö",
+							"locale":"FI",
 							"signicat.national_id": "123456-123A",
-						   "ftn.idpId":"fi-op",
-						   "family_name":"Tunnistus"
+							"ftn.idpId":"fi-op",
+							"family_name":"Tunnistus"
 						}`
 						return newMockResponse(http.StatusOK, headers, body)
 					} else {
@@ -682,13 +682,13 @@ var _ = Describe("OIDCClient Tests", func() {
 						return newMockResponse(http.StatusOK, headers, body)
 					} else if req.URL.Path == "/oidc/userinfo" {
 						body := `{
-						   "sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
-						   "name":"Väinö Tunnistus",
-						   "given_name":"Väinö",
-						   "locale":"FI",
+							"sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+							"name":"Väinö Tunnistus",
+							"given_name":"Väinö",
+							"locale":"FI",
 							"signicat.national_id": "123456-123A",
-						   "ftn.idpId":"fi-op",
-						   "family_name":"Tunnistus"
+							"ftn.idpId":"fi-op",
+							"family_name":"Tunnistus"
 						}`
 						return newMockResponse(http.StatusOK, headers, body)
 					} else {
