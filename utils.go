@@ -49,10 +49,7 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*JSONWebKeySet, er
 		return nil, fmt.Errorf("%s: %s", resp.Status, body)
 	}
 
-	type jwksJSON struct {
-		Keys []jose.JSONWebKey `json:"keys"`
-	}
-	var jwks jwksJSON
+	var jwks JSONWebKeySet
 	err = json.Unmarshal(body, &jwks)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal jwks: %v", err.Error())
@@ -62,9 +59,7 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*JSONWebKeySet, er
 		return nil, fmt.Errorf("the number of remote keys is invalid. expected 2, got: %d", len(jwks.Keys))
 	}
 
-	return &JSONWebKeySet{
-		Keys: jwks.Keys,
-	}, nil
+	return &jwks, nil
 }
 
 // doRequest executes http request using either http.DefaultClient or the client specified in context if it's available.
