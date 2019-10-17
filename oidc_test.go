@@ -826,7 +826,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
 
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("failed to unmarshal jwks: square/go-jose: unknown json web key type 'RSA1'"))
+			Expect(err.Error()).To(Equal("unable to unmarshal keys: square/go-jose: unknown json web key type 'RSA1'"))
 			Expect(client).To(BeNil())
 		})
 	})

@@ -187,14 +187,13 @@ func (o *OIDCClient) HandleCallback(code string, user interface{}) error {
 // authentication. The difference between OIDCClientEncrypted and OIDCClient is that the former uses message level
 // encryption when communicating with the service provider.
 type OIDCClientEncrypted struct {
-	oauth2Config    *oauth2.Config
-	oidcConfig      *oidc.Config
-	provider        *oidc.Provider
-	decryptionKey   *jose.JSONWebKey
-	verificationKey *jose.JSONWebKey
-	remoteKeySet    *JSONWebKeySet
-	config          *Config
-	ctx             context.Context
+	oauth2Config  *oauth2.Config
+	oidcConfig    *oidc.Config
+	provider      *oidc.Provider
+	decryptionKey *jose.JSONWebKey
+	remoteKeySet  *RemoteKeyStore
+	config        *Config
+	ctx           context.Context
 }
 
 // AuthCodeURLEncrypted returns the URL of the authorization request with encrypted request object.
