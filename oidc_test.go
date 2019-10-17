@@ -769,42 +769,6 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err.Error()).To(Equal(fmt.Sprintf("unable to initialize client: %s: %s", http.StatusText(http.StatusInternalServerError), body)))
 		})
 
-		It("fails to initialize client if jwks_uri property does not contain two keys", func() {
-			mockClient = newMockClient(func(req *http.Request) *http.Response {
-				headers := http.Header{
-					"Content-Type": {"application/json"},
-				}
-
-				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-					return newMockResponse(http.StatusOK, headers, openidConfiguration)
-				} else if req.URL.Path == "/oidc/jwks.json" {
-					remoteJwks := `{
-						"keys":[
-							{
-								"kty":"RSA",
-								"e":"AQAB",
-								"use":"sig",
-								"kid":"any.oidc-signature-preprod.test.jwk.v.1",
-								"alg":"RS256",
-								"n":"px6mGAGqVTcf8SNBzGF5ZzMQem8QH2wXO1xXEgwQAsBCcVvlpliIj1gkPDux36DYAgdUYy1wM7VhW6FHNhT1yCA7aYteUKB9hKAai3wzQNoUXPHQlKQsWRgTboFRQrkKzPgHHIp8IwZxBFzjCp9W9gdQ_LIQyCyjxoRTR0yg21HB1SC2bh91L2K689IpS9qcb7KBjizVmGqwRCgWtA1lBOKEpgrhPeHnSLcvRWG97ePR5MfmzftWxRftWIlDaIWV_3cnn8WsXH2Qtg4cq5FGBdS30SWHTpYNRuLYfvttivR1uZmx8fnnYEfy3L7lxHbWuVbdkySofQ7yvJWX56GGJw"
-							}
-						]
-					}`
-					return newMockResponse(http.StatusOK, headers, remoteJwks)
-				} else {
-					body := `{"error":"invalid path"}`
-					return newMockResponse(http.StatusInternalServerError, headers, body)
-				}
-			})
-
-			ctx := context.Background()
-			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
-
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("the number of remote keys is invalid. expected 2, got: 1"))
-			Expect(client).To(BeNil())
-		})
-
 		It("fails to initialize client if local key is of invalid format", func() {
 			config = Config{
 				ClientId:     "demo-ftnenc",

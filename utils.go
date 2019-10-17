@@ -55,10 +55,6 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*JSONWebKeySet, er
 		return nil, fmt.Errorf("failed to unmarshal jwks: %v", err.Error())
 	}
 
-	if len(jwks.Keys) != 2 {
-		return nil, fmt.Errorf("the number of remote keys is invalid. expected 2, got: %d", len(jwks.Keys))
-	}
-
 	return &jwks, nil
 }
 
