@@ -21,10 +21,10 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-type MockRoundTrip func(request *http.Request) *http.Response
+type MockRoundTrip func(request *http.Request) (*http.Response, error)
 
 func (m MockRoundTrip) RoundTrip(request *http.Request) (*http.Response, error) {
-	return m(request), nil
+	return m(request)
 }
 
 func newMockClient(fn MockRoundTrip) *http.Client {
@@ -152,17 +152,17 @@ var _ = Describe("OIDCClient Tests", func() {
 				Scopes:       []string{"openid", "profile", "signicat.national_id"},
 			}
 
-			mockClient = newMockClient(func(req *http.Request) *http.Response {
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
 					"Content-Type": {"application/json"},
 				}
 				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 				} else if req.URL.Path == "/oidc/jwks.json" {
-					return newMockResponse(http.StatusOK, headers, remoteJwks)
+					return newMockResponse(http.StatusOK, headers, remoteJwks), nil
 				} else {
 					body := `{"error":"invalid path"}`
-					return newMockResponse(http.StatusInternalServerError, headers, body)
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
 				}
 			})
 		})
@@ -179,11 +179,11 @@ var _ = Describe("OIDCClient Tests", func() {
 
 			It("fails to initialize client if discovery fails", func() {
 				body := `{"error":"Internal Server Error"}`
-				mockClient := newMockClient(func(req *http.Request) *http.Response {
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
-					return newMockResponse(http.StatusInternalServerError, headers, body)
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
 				})
 
 				ctx := context.Background()
@@ -232,13 +232,13 @@ var _ = Describe("OIDCClient Tests", func() {
 					Scopes:       []string{"openid", "profile", "signicat.national_id"},
 				}
 
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					path := req.URL.Path
 					if path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if path == "/oidc/token" {
 						body := `{
 							"access_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiItWC1RLTFnbUktSWxSLXpoOGdkc0NOZ0FqUlowWmpYOSIsInNjcCI6WyJvcGVuaWQiLCJwcm9maWxlIl0sInNubSI6ImRlbW8iLCJpc3MiOiJodHRwczpcL1wvcHJlcHJvZC5zaWduaWNhdC5jb21cL29pZGMiLCJleHAiOjE1NzA3MTc1NTEsImlhdCI6MTU3MDcxNTc1MSwianRpIjoiRnlzVkVPaENURzJUSjg0ZWxIZDVOTDZkNVhtWUp2OC0iLCJjaWQiOiJkZW1vLXByZXByb2QifQ.Lm8pqn0F3euTOttBz3VEryIz-VoeBAABDxjhcCC3hMqa5-nl5SJIg7xIoCQ8hSsqcRmxPRSF6gbyKJU52TwH3miVVYoemBzVL0cqxwDXxBc5oZhUSEr3CkVME34URd-q9ThQugJXWzSrrvxtgdbklb_eEijF1BuZc0zOMtsLXdV88foy-p6PeGQ7EhRpsoa_DEB88zzE5AGpStG4PLotYs0ev3E5sLgViAsqAKrPV26V2gHpdEnYFqAJz6AoSA7LntM_9im1TF3VnLRt467-2a8qYPuDcsnjudjajElmAYEZ9qQ6B0cUtNJV-dU8aDF1vJ7GpgolY05psUJVXcbNAg",
@@ -248,12 +248,12 @@ var _ = Describe("OIDCClient Tests", func() {
 							"expires_in":1800,
 							"id_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJhY3IiOiJ1cm46c2lnbmljYXQ6b2lkYzptZXRob2Q6aWRpbiIsInN1YiI6Ii1YLVEtMWdtSS1JbFItemg4Z2RzQ05nQWpSWjBaalg5IiwiYXVkIjoiZGVtby1wcmVwcm9kIiwibmJmIjoxNTcwNzE1NzUxLCJhdXRoX3RpbWUiOjE1NzA3MTU3NDAsImFtciI6InVybjprc2k6bmFtZXM6U0FNTDoyLjA6YWM6aURJTiIsImlzcyI6Imh0dHBzOlwvXC9wcmVwcm9kLnNpZ25pY2F0LmNvbVwvb2lkYyIsImV4cCI6MTU3MDcxOTM1MSwiaWF0IjoxNTcwNzE1NzUxfQ.T9h62zn_IWGu4s9yyW0sf7HmGW2zLZajTF56l-_xDTG_tyTAryuKW9O6fixLkZoz8Mfh-AKBSqPt5bj8Z642mmVNaFZLhrvjtTyO_xvQc448BBKmVu7doPH4fBAFeA8IX-kUGEPN6djH3gLC75UifxG_URkHTqJSCpZXVNIjAy5g7m2_DISm4n3-uijWMMnwQoGPn1FvM2agwNIuMPLuGmmF5-YLGs8T7_9AasSUlYhMpjiATkolcajrXSMAizCKreRldxXK8dLwlh0UyFcosaHyVr0hiAa3LRV9i4crcfyKsh-NfFw6eSvZfmMA-UWt-jlSpB2g8mQIqPxJbbr8Xg"
 						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if path == "/oidc/jwks.json" {
-						return newMockResponse(http.StatusOK, headers, remoteJwks)
+						return newMockResponse(http.StatusOK, headers, remoteJwks), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 			})
@@ -295,12 +295,12 @@ var _ = Describe("OIDCClient Tests", func() {
 					Fail("unable to create accessToken")
 				}
 
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if req.URL.Path == "/oidc/token" {
 						body := fmt.Sprintf(`{
 							"access_token":"%s",
@@ -310,7 +310,7 @@ var _ = Describe("OIDCClient Tests", func() {
 							"expires_in":600,
 							"id_token":"%s"
 						}`, accessToken, idToken)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if req.URL.Path == "/oidc/jwks.json" {
 						body := fmt.Sprintf(`{
 								"keys":[
@@ -318,10 +318,10 @@ var _ = Describe("OIDCClient Tests", func() {
 									%s
 							]
 						}`, keyJWKSMarshaled, remoteEncKey)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 
@@ -375,12 +375,12 @@ var _ = Describe("OIDCClient Tests", func() {
 				if err != nil {
 					Fail("unable to create accessToken")
 				}
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if req.URL.Path == "/oidc/token" {
 						body := fmt.Sprintf(`{
 							"access_token":"%s",
@@ -389,7 +389,7 @@ var _ = Describe("OIDCClient Tests", func() {
 							"scope":"openid profile",
 							"expires_in":600
 						}`, accessToken)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if req.URL.Path == "/oidc/jwks.json" {
 						body := fmt.Sprintf(`{
 								"keys":[
@@ -397,10 +397,10 @@ var _ = Describe("OIDCClient Tests", func() {
 									%s
 							]
 						}`, keyJWKSMarshaled, remoteEncKey)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 
@@ -425,15 +425,15 @@ var _ = Describe("OIDCClient Tests", func() {
 					Fail("unable to marshal generated public key")
 				}
 
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if req.URL.Path == "/oidc/token" {
 						body := `{"error":"bad request"}`
-						return newMockResponse(http.StatusBadRequest, headers, body)
+						return newMockResponse(http.StatusBadRequest, headers, body), nil
 					} else if req.URL.Path == "/oidc/jwks.json" {
 						body := fmt.Sprintf(`{
 								"keys":[
@@ -441,10 +441,10 @@ var _ = Describe("OIDCClient Tests", func() {
 									%s
 							]
 						}`, keyJWKSMarshaled, remoteEncKey)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 
@@ -472,13 +472,13 @@ var _ = Describe("OIDCClient Tests", func() {
 					Scopes:       []string{"openid", "profile", "signicat.national_id"},
 				}
 
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					path := req.URL.Path
 					if path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if path == "/oidc/token" {
 						body := `{
 							"access_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiItWC1RLTFnbUktSWxSLXpoOGdkc0NOZ0FqUlowWmpYOSIsInNjcCI6WyJvcGVuaWQiLCJwcm9maWxlIl0sInNubSI6ImRlbW8iLCJpc3MiOiJodHRwczpcL1wvcHJlcHJvZC5zaWduaWNhdC5jb21cL29pZGMiLCJleHAiOjE1NzA3MTc1NTEsImlhdCI6MTU3MDcxNTc1MSwianRpIjoiRnlzVkVPaENURzJUSjg0ZWxIZDVOTDZkNVhtWUp2OC0iLCJjaWQiOiJkZW1vLXByZXByb2QifQ.Lm8pqn0F3euTOttBz3VEryIz-VoeBAABDxjhcCC3hMqa5-nl5SJIg7xIoCQ8hSsqcRmxPRSF6gbyKJU52TwH3miVVYoemBzVL0cqxwDXxBc5oZhUSEr3CkVME34URd-q9ThQugJXWzSrrvxtgdbklb_eEijF1BuZc0zOMtsLXdV88foy-p6PeGQ7EhRpsoa_DEB88zzE5AGpStG4PLotYs0ev3E5sLgViAsqAKrPV26V2gHpdEnYFqAJz6AoSA7LntM_9im1TF3VnLRt467-2a8qYPuDcsnjudjajElmAYEZ9qQ6B0cUtNJV-dU8aDF1vJ7GpgolY05psUJVXcbNAg",
@@ -488,9 +488,9 @@ var _ = Describe("OIDCClient Tests", func() {
 							"expires_in":1800,
 							"id_token":"eyJraWQiOiJhbnkub2lkYy1zaWduYXR1cmUtcHJlcHJvZC50ZXN0Lmp3ay52LjEiLCJhbGciOiJSUzI1NiJ9.eyJhY3IiOiJ1cm46c2lnbmljYXQ6b2lkYzptZXRob2Q6aWRpbiIsInN1YiI6Ii1YLVEtMWdtSS1JbFItemg4Z2RzQ05nQWpSWjBaalg5IiwiYXVkIjoiZGVtby1wcmVwcm9kIiwibmJmIjoxNTcwNzE1NzUxLCJhdXRoX3RpbWUiOjE1NzA3MTU3NDAsImFtciI6InVybjprc2k6bmFtZXM6U0FNTDoyLjA6YWM6aURJTiIsImlzcyI6Imh0dHBzOlwvXC9wcmVwcm9kLnNpZ25pY2F0LmNvbVwvb2lkYyIsImV4cCI6MTU3MDcxOTM1MSwiaWF0IjoxNTcwNzE1NzUxfQ.T9h62zn_IWGu4s9yyW0sf7HmGW2zLZajTF56l-_xDTG_tyTAryuKW9O6fixLkZoz8Mfh-AKBSqPt5bj8Z642mmVNaFZLhrvjtTyO_xvQc448BBKmVu7doPH4fBAFeA8IX-kUGEPN6djH3gLC75UifxG_URkHTqJSCpZXVNIjAy5g7m2_DISm4n3-uijWMMnwQoGPn1FvM2agwNIuMPLuGmmF5-YLGs8T7_9AasSUlYhMpjiATkolcajrXSMAizCKreRldxXK8dLwlh0UyFcosaHyVr0hiAa3LRV9i4crcfyKsh-NfFw6eSvZfmMA-UWt-jlSpB2g8mQIqPxJbbr8Xg"
 						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if path == "/oidc/jwks.json" {
-						return newMockResponse(http.StatusOK, headers, remoteJwks)
+						return newMockResponse(http.StatusOK, headers, remoteJwks), nil
 					} else if path == "/oidc/userinfo" {
 						body := `{
 						   "sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
@@ -501,10 +501,10 @@ var _ = Describe("OIDCClient Tests", func() {
 						   "ftn.idpId":"fi-op",
 						   "family_name":"Tunnistus"
 						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 			})
@@ -525,21 +525,21 @@ var _ = Describe("OIDCClient Tests", func() {
 			})
 
 			It("fails when userinfo endpoint fails to return user info", func() {
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					path := req.URL.Path
 					if path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if path == "/oidc/jwks.json" {
-						return newMockResponse(http.StatusOK, headers, remoteJwks)
+						return newMockResponse(http.StatusOK, headers, remoteJwks), nil
 					} else if path == "/oidc/userinfo" {
 						body := `{"error": "internal server error"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 
@@ -602,12 +602,12 @@ var _ = Describe("OIDCClient Tests", func() {
 					Fail("unable to create accessToken")
 				}
 
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if req.URL.Path == "/oidc/token" {
 						body := fmt.Sprintf(`{
 							"access_token":"%s",
@@ -617,7 +617,7 @@ var _ = Describe("OIDCClient Tests", func() {
 							"expires_in":600,
 							"id_token":"%s"
 						}`, accessToken, idToken)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if req.URL.Path == "/oidc/jwks.json" {
 						body := fmt.Sprintf(`{
 								"keys":[
@@ -625,7 +625,7 @@ var _ = Describe("OIDCClient Tests", func() {
 									%s
 							]
 						}`, keyJWKSMarshaled, remoteEncKey)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if req.URL.Path == "/oidc/userinfo" {
 						body := `{
 							"sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
@@ -636,10 +636,10 @@ var _ = Describe("OIDCClient Tests", func() {
 							"ftn.idpId":"fi-op",
 							"family_name":"Tunnistus"
 						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 
@@ -663,15 +663,15 @@ var _ = Describe("OIDCClient Tests", func() {
 				keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 				keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
-				mockClient = newMockClient(func(req *http.Request) *http.Response {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 					headers := http.Header{
 						"Content-Type": {"application/json"},
 					}
 					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-						return newMockResponse(http.StatusOK, headers, openidConfiguration)
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 					} else if req.URL.Path == "/oidc/token" {
 						body := `{"error": "internal server error"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					} else if req.URL.Path == "/oidc/jwks.json" {
 						body := fmt.Sprintf(`{
 								"keys":[
@@ -679,7 +679,7 @@ var _ = Describe("OIDCClient Tests", func() {
 									%s
 							]
 						}`, keyJWKSMarshaled, remoteEncKey)
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if req.URL.Path == "/oidc/userinfo" {
 						body := `{
 							"sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
@@ -690,10 +690,10 @@ var _ = Describe("OIDCClient Tests", func() {
 							"ftn.idpId":"fi-op",
 							"family_name":"Tunnistus"
 						}`
-						return newMockResponse(http.StatusOK, headers, body)
+						return newMockResponse(http.StatusOK, headers, body), nil
 					} else {
 						body := `{"error":"invalid path"}`
-						return newMockResponse(http.StatusInternalServerError, headers, body)
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
 					}
 				})
 				ctx := context.Background()
@@ -726,18 +726,18 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Scopes:       []string{"openid", "profile", "signicat.national_id"},
 			}
 
-			mockClient = newMockClient(func(req *http.Request) *http.Response {
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
 					"Content-Type": {"application/json"},
 				}
 
 				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 				} else if req.URL.Path == "/oidc/jwks.json" {
-					return newMockResponse(http.StatusOK, headers, remoteJwks)
+					return newMockResponse(http.StatusOK, headers, remoteJwks), nil
 				} else {
 					body := `{"error":"invalid path"}`
-					return newMockResponse(http.StatusInternalServerError, headers, body)
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
 				}
 			})
 		})
@@ -754,11 +754,11 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 		It("fails to initialize client if discovery fails", func() {
 			body := `{"error":"Internal Server Error"}`
-			mockClient := newMockClient(func(req *http.Request) *http.Response {
+			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
 					"Content-Type": {"application/json"},
 				}
-				return newMockResponse(http.StatusInternalServerError, headers, body)
+				return newMockResponse(http.StatusInternalServerError, headers, body), nil
 			})
 
 			ctx := context.Background()
@@ -787,13 +787,13 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 		})
 
 		It("fails to initialize client if providers public key fails to marshal", func() {
-			mockClient = newMockClient(func(req *http.Request) *http.Response {
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
 					"Content-Type": {"application/json"},
 				}
 
 				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
-					return newMockResponse(http.StatusOK, headers, openidConfiguration)
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
 				} else if req.URL.Path == "/oidc/jwks.json" {
 					remoteJwks := `{
 						"keys":[
@@ -815,10 +815,10 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 							}
 						]
 					}`
-					return newMockResponse(http.StatusOK, headers, remoteJwks)
+					return newMockResponse(http.StatusOK, headers, remoteJwks), nil
 				} else {
 					body := `{"error":"invalid path"}`
-					return newMockResponse(http.StatusInternalServerError, headers, body)
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
 				}
 			})
 
