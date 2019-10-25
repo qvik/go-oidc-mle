@@ -45,20 +45,6 @@ func newMockResponse(statusCode int, headers http.Header, body string) *http.Res
 	}
 }
 
-var _ = Describe("Must tests", func() {
-	It("does not panic if error == nil", func() {
-		Expect(func() {
-			Must(&OIDCClient{}, nil)
-		}).NotTo(Panic())
-	})
-
-	It("panics if error is not returned", func() {
-		Expect(func() {
-			Must(nil, errors.New("oh noes"))
-		}).To(Panic())
-	})
-})
-
 type User struct {
 	Subject    string `json:"sub"`
 	Name       string `json:"name"`
@@ -135,6 +121,20 @@ const remoteEncKey = `{
 	"alg":"RSA-OAEP",
 	"n":"ou9ZQ_e0JSMhOA3fSwzH4h9OHgS8xLbtScHUlQEq9XWRw0i5ZefGWEUCeWJgehxuRMumPdm5_csfSnJLJom3c5cEnloXB53ZFEa6qJ7AEHnSjdMxnIkzcq_4ICQg69fwTac1ZCjxhCraUs6G9LE8b9gN-EHmd8MXuLRxZUkjlgiQKb-XhfDaDA7rd7KMczyxrieZT3q5lk1fjw2V_o_jasowLo8i7s8Wa4S7BAg1ZFv2-oc8PcobbJLsAAIxg3PEn0nDIvNcs6cjjYje2_TrrXMmis2TJquQhLOHjx_yQdzQNfzxC5_GwOZPBKZR1gH1-QxlW7q8jevC2-f_-7FlHw"
 }`
+
+var _ = Describe("Must tests", func() {
+	It("does not panic if error == nil", func() {
+		Expect(func() {
+			Must(&OIDCClient{}, nil)
+		}).NotTo(Panic())
+	})
+
+	It("panics if error is not returned", func() {
+		Expect(func() {
+			Must(nil, errors.New("oh noes"))
+		}).To(Panic())
+	})
+})
 
 var _ = Describe("OIDCClient Tests", func() {
 	var (
