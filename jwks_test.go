@@ -302,8 +302,6 @@ var _ = Describe("Jwks tests", func() {
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
-			fmt.Println(err.Error())
-
 			expectedError := fmt.Sprintf("unable to get keys: %s %s", http.StatusText(http.StatusInternalServerError), body)
 			Expect(jwks).To(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))

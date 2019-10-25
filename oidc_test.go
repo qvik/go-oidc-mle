@@ -291,7 +291,6 @@ var _ = Describe("OIDCClient Tests", func() {
 				}
 				accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
 				if err != nil {
-					fmt.Println(err)
 					Fail("unable to create accessToken")
 				}
 
@@ -598,7 +597,6 @@ var _ = Describe("OIDCClient Tests", func() {
 				}
 				accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
 				if err != nil {
-					fmt.Println(err)
 					Fail("unable to create accessToken")
 				}
 
