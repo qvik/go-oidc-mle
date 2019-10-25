@@ -14,25 +14,25 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-const keysExpiryDelta = 15 * time.Second
-
-// JSONWebKeySet represents a JWK key set. We are not using jose.JSONWebKeySet directly as we need ByUse function.
-type JSONWebKeySet jose.JSONWebKeySet
-
-// ById returns keys by key ID from the key set
-func (j *JSONWebKeySet) ById(kid string) (*jose.JSONWebKey, error) {
-	for _, key := range j.Keys {
-		if key.KeyID == kid {
-			return &key, nil
-		}
-	}
-
-	return nil, errors.New("key not found")
+type RemoteKeyStore struct {
+	jose.JSONWebKeySet
+	Context context.Context
+	JwksURI string
+	Expiry  time.Time
 }
 
-// Convenience method for getting key(s) from key set by use
-func (j *JSONWebKeySet) ByUse(use string) (*jose.JSONWebKey, error) {
-	for _, key := range j.Keys {
+func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
+	now := time.Now()
+	if now.After(r.Expiry) {
+		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
+		if err != nil {
+			return nil, err
+		}
+		r.Keys = keys
+		r.Expiry = expiry
+	}
+
+	for _, key := range r.Keys {
 		if key.Use == use {
 			return &key, nil
 		}
@@ -41,11 +41,24 @@ func (j *JSONWebKeySet) ByUse(use string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("key not found")
 }
 
-type RemoteKeyStore struct {
-	JSONWebKeySet
-	Context context.Context
-	JwksURI string
-	Expiry  time.Time
+func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
+	now := time.Now()
+	if now.After(r.Expiry) {
+		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
+		if err != nil {
+			return nil, err
+		}
+		r.Keys = keys
+		r.Expiry = expiry
+	}
+
+	for _, key := range r.Keys {
+		if key.KeyID == kid {
+			return &key, nil
+		}
+	}
+
+	return nil, errors.New("key not found")
 }
 
 // providerRemoteKeys is a convenience method for fetching and unmashaling the provider jwks from the jwks_uri.
@@ -56,7 +69,7 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, e
 		return nil, err
 	}
 	return &RemoteKeyStore{
-		JSONWebKeySet: JSONWebKeySet{Keys: keys},
+		JSONWebKeySet: jose.JSONWebKeySet{Keys: keys},
 		Context:       ctx,
 		JwksURI:       jwksUri,
 		Expiry:        expiry,

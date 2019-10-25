@@ -19,61 +19,216 @@ import (
 )
 
 var _ = Describe("Jwks tests", func() {
-	Describe("ByUse", func() {
-		It("Finds a key from keyset by use", func() {
-			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
-			key2, _ := generateKey("example2", "RSA-OAEP", "sig")
-			keyset := JSONWebKeySet{
-				Keys: []jose.JSONWebKey{
-					*key1,
-					*key2,
-				},
-			}
 
-			Expect(keyset.ByUse("enc")).To(Equal(key1))
-			Expect(keyset.ByUse("sig")).To(Equal(key2))
+	Describe("RemoteKeyStore", func() {
+		var (
+			signKeyId        string
+			signKey          *rsa.PrivateKey
+			signKeyJwk       *jose.JSONWebKey
+			signKeyMarshaled []byte
+			encKeyId         string
+			encKey           *rsa.PrivateKey
+			encKeyJwk        *jose.JSONWebKey
+			encKeyMarshaled  []byte
+			err              error
+		)
+
+		BeforeEach(func() {
+			signKeyId = generateId()
+			signKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			signKeyJwk = &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
+			signKeyJwk.Certificates = nil
+			signKeyMarshaled, err = signKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			encKeyId = generateId()
+			encKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			encKeyJwk = &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
+			encKeyMarshaled, err = encKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
 		})
 
-		It("Throws an error if no keys by usage are found", func() {
-			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
-			keyset := JSONWebKeySet{
-				Keys: []jose.JSONWebKey{
-					*key1,
-				},
-			}
+		Describe("ByUse", func() {
+			It("successfully returns a key by usage from the key store", func() {
+				body := fmt.Sprintf(`{"keys":[%s, %s]}`, signKeyMarshaled, encKeyMarshaled)
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type":  {"application/json"},
+						"Cache-Control": {"max-age=3600"},
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
 
-			_, err := keyset.ByUse("sig")
-			Expect(err).ShouldNot(BeNil())
-			Expect(err).To(Equal(errors.New("key not found")))
+				var expectedKeySet jose.JSONWebKeySet
+				err = json.Unmarshal([]byte(body), &expectedKeySet)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				const uri = "https://example.com/oidc/jwks.json"
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				actualEncKey, err := remoteKeys.ByUse("enc")
+				Expect(err).To(BeNil())
+				actualSignKey, err := remoteKeys.ByUse("sig")
+
+				Expect(err).To(BeNil())
+				Expect(*actualEncKey).To(Equal(expectedKeySet.Keys[1]))
+				Expect(*actualSignKey).To(Equal(expectedKeySet.Keys[0]))
+			})
+
+			It("refreshes the keys if the keys have expired", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				numberOfCalls := 0
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					var headers http.Header
+					if numberOfCalls == 0 {
+						headers = http.Header{
+							"Content-Type": {"application/json"},
+						}
+						numberOfCalls++
+					} else {
+						headers = http.Header{
+							"Content-Type":  {"application/json"},
+							"Cache-Control": {"max-age=3600"},
+						}
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
+
+				var expectedKeySet jose.JSONWebKeySet
+				err = json.Unmarshal([]byte(body), &expectedKeySet)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				const uri = "https://example.com/oidc/jwks.json"
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				now := time.Now()
+				Expect(remoteKeys.Expiry).Should(BeTemporally("<=", now))
+
+				actualSignKey, err := remoteKeys.ByUse("sig")
+				Expect(err).To(BeNil())
+				Expect(*actualSignKey).To(Equal(expectedKeySet.Keys[0]))
+				Expect(remoteKeys.Expiry).Should(BeTemporally(">=", now.Add(1*time.Hour)))
+			})
+
+			It("returns an error if key cannot be found", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type":  {"application/json"},
+						"Cache-Control": {"max-age=3600"},
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				const uri = "https://example.com/oidc/jwks.json"
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				actualSignKey, err := remoteKeys.ByUse("enc")
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("key not found"))
+				Expect(actualSignKey).To(BeNil())
+			})
 		})
-	})
 
-	Describe("ById", func() {
-		It("Finds a key from keyset by use", func() {
-			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
-			key2, _ := generateKey("example2", "RSA-OAEP", "sig")
-			keyset := JSONWebKeySet{
-				Keys: []jose.JSONWebKey{
-					*key1,
-					*key2,
-				},
-			}
+		Describe("ById", func() {
+			It("successfully returns a key by usage from the key store", func() {
+				body := fmt.Sprintf(`{"keys":[%s, %s]}`, signKeyMarshaled, encKeyMarshaled)
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type":  {"application/json"},
+						"Cache-Control": {"max-age=3600"},
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
 
-			Expect(keyset.ById("example1")).To(Equal(key1))
-			Expect(keyset.ById("example2")).To(Equal(key2))
-		})
+				var expectedKeySet jose.JSONWebKeySet
+				err = json.Unmarshal([]byte(body), &expectedKeySet)
+				Expect(err).To(BeNil())
 
-		It("Throws an error if no keys by usage are found", func() {
-			key1, _ := generateKey("example1", "RSA-OAEP", "enc")
-			keyset := JSONWebKeySet{
-				Keys: []jose.JSONWebKey{
-					*key1,
-				},
-			}
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				const uri = "https://example.com/oidc/jwks.json"
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
 
-			_, err := keyset.ById("notReal")
-			Expect(err).ShouldNot(BeNil())
-			Expect(err).To(Equal(errors.New("key not found")))
+				actualEncKey, err := remoteKeys.ById(encKeyId)
+				Expect(err).To(BeNil())
+				actualSignKey, err := remoteKeys.ById(signKeyId)
+
+				Expect(err).To(BeNil())
+				Expect(*actualEncKey).To(Equal(expectedKeySet.Keys[1]))
+				Expect(*actualSignKey).To(Equal(expectedKeySet.Keys[0]))
+			})
+
+			It("refreshes the keys if the keys have expired", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				numberOfCalls := 0
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					var headers http.Header
+					if numberOfCalls == 0 {
+						headers = http.Header{
+							"Content-Type": {"application/json"},
+						}
+						numberOfCalls++
+					} else {
+						headers = http.Header{
+							"Content-Type":  {"application/json"},
+							"Cache-Control": {"max-age=3600"},
+						}
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
+
+				var expectedKeySet jose.JSONWebKeySet
+				err = json.Unmarshal([]byte(body), &expectedKeySet)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				const uri = "https://example.com/oidc/jwks.json"
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				now := time.Now()
+				Expect(remoteKeys.Expiry).Should(BeTemporally("<=", now))
+
+				actualSignKey, err := remoteKeys.ById(signKeyId)
+				Expect(err).To(BeNil())
+				Expect(*actualSignKey).To(Equal(expectedKeySet.Keys[0]))
+				Expect(remoteKeys.Expiry).Should(BeTemporally(">=", now.Add(1*time.Hour)))
+			})
+
+			It("returns an error if key cannot be found", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type":  {"application/json"},
+						"Cache-Control": {"max-age=3600"},
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				const uri = "https://example.com/oidc/jwks.json"
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				actualSignKey, err := remoteKeys.ById(generateId())
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("key not found"))
+				Expect(actualSignKey).To(BeNil())
+			})
 		})
 	})
 
@@ -84,17 +239,13 @@ var _ = Describe("Jwks tests", func() {
 			signKeyJwk := &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err := signKeyJwk.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public signKey")
-			}
+			Expect(err).To(BeNil())
 
 			encKeyId := generateId()
 			encKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 			encKeyJwk := &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
 			encKeyMarshaled, err := encKeyJwk.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public signKey")
-			}
+			Expect(err).To(BeNil())
 
 			body := fmt.Sprintf(`{"keys":[%s, %s]}`, signKeyMarshaled, encKeyMarshaled)
 			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
@@ -106,9 +257,7 @@ var _ = Describe("Jwks tests", func() {
 
 			var expectedKeySet jose.JSONWebKeySet
 			err = json.Unmarshal([]byte(body), &expectedKeySet)
-			if err != nil {
-				Fail("failed to unmarshal expected key set")
-			}
+			Expect(err).To(BeNil())
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
@@ -175,17 +324,13 @@ var _ = Describe("Jwks tests", func() {
 			signKeyJwk := &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err := signKeyJwk.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public signKey")
-			}
+			Expect(err).To(BeNil())
 
 			encKeyId := generateId()
 			encKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 			encKeyJwk := &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
 			encKeyMarshaled, err := encKeyJwk.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public signKey")
-			}
+			Expect(err).To(BeNil())
 
 			body := fmt.Sprintf(`{"keys":[%s, %s]}`, signKeyMarshaled, encKeyMarshaled)
 			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
@@ -201,8 +346,6 @@ var _ = Describe("Jwks tests", func() {
 			const uri = "https://example.com/oidc/jwks.json"
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
-			fmt.Println(err.Error())
-
 			expectedError := `unable to parse response cache headers: strconv.ParseUint: parsing "INVALID": invalid syntax`
 			Expect(jwks).To(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
@@ -215,17 +358,13 @@ var _ = Describe("Jwks tests", func() {
 			signKeyJwk := &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err := signKeyJwk.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public signKey")
-			}
+			Expect(err).To(BeNil())
 
 			encKeyId := generateId()
 			encKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 			encKeyJwk := &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
 			encKeyMarshaled, err := encKeyJwk.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public signKey")
-			}
+			Expect(err).To(BeNil())
 
 			body := fmt.Sprintf(`{"keys":[%s, %s]}`, signKeyMarshaled, encKeyMarshaled)
 			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
@@ -238,11 +377,9 @@ var _ = Describe("Jwks tests", func() {
 
 			var expectedKeySet jose.JSONWebKeySet
 			err = json.Unmarshal([]byte(body), &expectedKeySet)
-			if err != nil {
-				Fail("failed to unmarshal expected key set")
-			}
-			now := time.Now()
+			Expect(err).To(BeNil())
 
+			now := time.Now()
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			const uri = "https://example.com/oidc/jwks.json"
@@ -255,12 +392,3 @@ var _ = Describe("Jwks tests", func() {
 		})
 	})
 })
-
-func generateKey(keyId, alg, use string) (*jose.JSONWebKey, error) {
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, err
-	}
-
-	return &jose.JSONWebKey{Key: key, KeyID: keyId, Algorithm: alg, Use: use}, nil
-}
