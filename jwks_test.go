@@ -19,6 +19,7 @@ import (
 )
 
 var _ = Describe("Jwks tests", func() {
+	const uri = "https://example.com/oidc/jwks.json"
 
 	Describe("RemoteKeyStore", func() {
 		var (
@@ -66,7 +67,6 @@ var _ = Describe("Jwks tests", func() {
 
 				ctx := context.Background()
 				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-				const uri = "https://example.com/oidc/jwks.json"
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
@@ -104,7 +104,6 @@ var _ = Describe("Jwks tests", func() {
 
 				ctx := context.Background()
 				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-				const uri = "https://example.com/oidc/jwks.json"
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
@@ -129,7 +128,6 @@ var _ = Describe("Jwks tests", func() {
 
 				ctx := context.Background()
 				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-				const uri = "https://example.com/oidc/jwks.json"
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
@@ -157,7 +155,6 @@ var _ = Describe("Jwks tests", func() {
 
 				ctx := context.Background()
 				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-				const uri = "https://example.com/oidc/jwks.json"
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
@@ -195,7 +192,6 @@ var _ = Describe("Jwks tests", func() {
 
 				ctx := context.Background()
 				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-				const uri = "https://example.com/oidc/jwks.json"
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
@@ -220,7 +216,6 @@ var _ = Describe("Jwks tests", func() {
 
 				ctx := context.Background()
 				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-				const uri = "https://example.com/oidc/jwks.json"
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
@@ -261,7 +256,6 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			const uri = "https://example.com/oidc/jwks.json"
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
 			now := time.Now()
@@ -287,7 +281,6 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			const uri = "https://example.com/oidc/jwks.json"
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
 			expectedError := "unable to fetch keys Get https://example.com/oidc/jwks.json: request failed"
@@ -307,7 +300,6 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			const uri = "https://example.com/oidc/jwks.json"
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
 			fmt.Println(err.Error())
@@ -343,7 +335,6 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			const uri = "https://example.com/oidc/jwks.json"
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
 			expectedError := `unable to parse response cache headers: strconv.ParseUint: parsing "INVALID": invalid syntax`
@@ -382,7 +373,6 @@ var _ = Describe("Jwks tests", func() {
 			now := time.Now()
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			const uri = "https://example.com/oidc/jwks.json"
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
 			Expect(jwks).To(Equal(expectedKeySet.Keys))
