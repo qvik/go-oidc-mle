@@ -47,7 +47,6 @@ var _ = Describe("Jwks tests", func() {
 			encKeyJwk = &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
 			encKeyMarshaled, err = encKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
-
 		})
 
 		Describe("ByUse", func() {
