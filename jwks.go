@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/pquerna/cachecontrol"
@@ -19,11 +20,14 @@ type RemoteKeyStore struct {
 	Context context.Context
 	JwksURI string
 	Expiry  time.Time
+	mutex   sync.Mutex
 }
 
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	now := time.Now()
 	if now.After(r.Expiry) {
+		r.mutex.Lock()
+		defer r.mutex.Unlock()
 		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
 		if err != nil {
 			return nil, err
@@ -44,12 +48,10 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
 	now := time.Now()
 	if now.After(r.Expiry) {
-		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
+		err := r.updateKeys()
 		if err != nil {
 			return nil, err
 		}
-		r.Keys = keys
-		r.Expiry = expiry
 	}
 
 	for _, key := range r.Keys {
@@ -59,6 +61,19 @@ func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
 	}
 
 	return nil, errors.New("key not found")
+}
+
+// updateKeys updates the keys in RemoteKeyStore
+func (r *RemoteKeyStore) updateKeys() error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	keys, expiry, err := updateKeys(r.Context, r.JwksURI)
+	if err != nil {
+		return err
+	}
+	r.Keys = keys
+	r.Expiry = expiry
+	return nil
 }
 
 // providerRemoteKeys is a convenience method for fetching and unmashaling the provider jwks from the jwks_uri.
