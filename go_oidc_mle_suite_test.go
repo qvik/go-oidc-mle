@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGoMleOidc(t *testing.T) {
+func TestGoOidcMle(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "go-oidc-mle suite")
 }
