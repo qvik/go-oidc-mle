@@ -6,7 +6,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-// newEncrypted is a convenience method for creating a jose.Encrypter using a JWK key.
+// newEncrypted is a convenience method for creating a jose.Encrypter using a specified JWK.
 func newEncrypter(key *jose.JSONWebKey) (jose.Encrypter, error) {
 	alg := jose.KeyAlgorithm(key.Algorithm)
 	// TODO(janne): the encryption algorithm should be taken from the oidc-configuration
@@ -22,7 +22,7 @@ func newEncrypter(key *jose.JSONWebKey) (jose.Encrypter, error) {
 	}, &options)
 }
 
-// statusCodeIs2xx checks if the status code is between 200 and 299 range inclusive.
+// Checks if the status code is between 200 and 299 range inclusive.
 func statusCodeIs2xx(statusCode int) bool {
 	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
 		return false

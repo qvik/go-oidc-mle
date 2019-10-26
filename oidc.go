@@ -1,3 +1,5 @@
+// Package oidc provides OpenID Connect wrapper that implements message level encryption using the optional
+// encrypted request object.
 package oidc
 
 import (
@@ -15,7 +17,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-// OIDCInterface is a common interface for OIDC clients to implement.
+// OIDCInterface defines the functions that the clients must implement.
 type OIDCInterface interface {
 	Exchange(string, map[string]string) (*oauth2.Token, error)
 	AuthRequestURL(string, map[string]string) (string, error)
@@ -24,7 +26,9 @@ type OIDCInterface interface {
 	HandleCallback(string, interface{}) error
 }
 
-// Must is a convenience function to make sure that the OIDC client is successfully initialised or it panics.
+// Must is a convenience function to make sure that the OIDC client is
+// successfully initialised. If the client initialization fails the function
+// panics.
 func Must(client OIDCInterface, err error) OIDCInterface {
 	if err != nil {
 		panic(err)
@@ -33,7 +37,9 @@ func Must(client OIDCInterface, err error) OIDCInterface {
 	return client
 }
 
-// NewClient initialises OIDClient and returns a pointer to the instance.
+// NewClient initializes and returns OIDClient that can be used to implement
+// OIDC authorization code flow. Discovery is used to read the provider's oidc
+// configuration.
 func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
@@ -60,7 +66,9 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 	}, nil
 }
 
-// NewClientMLE initialises OIDClientEncrypted and returns a pointer to the instance.
+// NewClientMLE initialises and returns OIDClientEncrypted which can be used
+// to implement OIDC authorization code flow with message level encryption.
+// Discovery is used to read the provider's oidc configuration.
 func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, error) {
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
@@ -110,7 +118,8 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 	}, nil
 }
 
-// OIDCClient wraps oaut2 and oidc libraries and provides convenience functions for implementing OIDC authentication.
+// OIDCClient provideswraps oauth2 and go-oidc libraries and provides
+// convenience functions for implementing OIDC authorization code flow.
 type OIDCClient struct {
 	oauth2Config *oauth2.Config
 	oidcConfig   *oidc.Config
@@ -119,7 +128,7 @@ type OIDCClient struct {
 	ctx          context.Context
 }
 
-// Exchange exchanges the authorization code to a token.
+// Exchanges the authorization code to a token.
 func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
@@ -141,7 +150,7 @@ func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.T
 	return oauth2Token, nil
 }
 
-// AuthRequestURL returns the URL for authorization request.
+// Returns the URL for authorization request.
 func (o *OIDCClient) AuthRequestURL(state string, options map[string]string) (string, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
@@ -150,13 +159,13 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]string) (st
 	return o.oauth2Config.AuthCodeURL(state, opts...), nil
 }
 
-// Verify verifies the signature of the token.
+// Verifies the signature of the token.
 func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
 }
 
-// UserInfo fetches user information.
+// Fetches user information from provider's user info endpoint.
 func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
 	userInfo, err := o.provider.UserInfo(o.ctx, token)
 	if err != nil {
@@ -169,8 +178,9 @@ func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error 
 	return nil
 }
 
-// HandleCallback is a convenience function which exchanges the authorization code to token and then uses the token
-// to request user information from user info endpoint. The implementation does not use message level encryption.
+// HandleCallback is a convenience function which exchanges the authorization
+// code to token and then uses the token to request user information from user
+// info endpoint. The implementation does not use message level encryption.
 func (o *OIDCClient) HandleCallback(code string, user interface{}) error {
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
@@ -183,9 +193,10 @@ func (o *OIDCClient) HandleCallback(code string, user interface{}) error {
 	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
 }
 
-// OIDCClientEncrypted wraps oauth2 and oidc libraries and provides convenience functions for implementing OIDC
-// authentication. The difference between OIDCClientEncrypted and OIDCClient is that the former uses message level
-// encryption when communicating with the service provider.
+// OIDCClientEncrypted wraps oauth2 and oidc libraries and provides
+// convenience functions for implementing OIDC authentication. The difference
+// between OIDCClientEncrypted and OIDCClient is that the former uses message
+// level encryption when communicating with the service provider.
 type OIDCClientEncrypted struct {
 	oauth2Config  *oauth2.Config
 	oidcConfig    *oidc.Config
@@ -196,7 +207,7 @@ type OIDCClientEncrypted struct {
 	ctx           context.Context
 }
 
-// AuthCodeURLEncrypted returns the URL of the authorization request with encrypted request object.
+// Returns the authorization request URL with encrypted request object.
 func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]string) (string, error) {
 	mandatoryParams := map[string]string{
 		"response_type": "code",
@@ -239,13 +250,13 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 	return authRequestURL, nil
 }
 
-// Verify verifies the signature of a token
+// Verifies the signature of a token
 func (o *OIDCClientEncrypted) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
 }
 
-// Exchange exchanges the authorization code to a token.
+// Exchanges the authorization code to a token.
 func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
@@ -282,7 +293,7 @@ type userInfoURL struct {
 	Endpoint string `json:"userinfo_endpoint"`
 }
 
-// UserInfo fetches user information from client provider.
+// Fetches user information from provider's user info endpoint.
 func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest interface{}) error {
 	var userInfoURL userInfoURL
 	err := o.provider.Claims(&userInfoURL)
@@ -336,8 +347,9 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 	return nil
 }
 
-// HandleCallback is a convenience function which exchanges the authorization code to token and then uses the token
-// to request user information from user info endpoint. The implementation uses message level encryption.
+// HandleCallback is a convenience function which exchanges the authorization
+// code to token and then uses the token to request user information from
+// user info endpoint. The implementation uses message level encryption.
 func (o *OIDCClientEncrypted) HandleCallback(code string, user interface{}) error {
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,

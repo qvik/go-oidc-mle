@@ -15,6 +15,8 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
+// Stores OIDC provider's JWKs and caches them for the duration specified in
+// the cache-control header. Keys will be refreshed upon expiry.
 type RemoteKeyStore struct {
 	jose.JSONWebKeySet
 	Context context.Context
@@ -23,8 +25,8 @@ type RemoteKeyStore struct {
 	mutex   sync.Mutex
 }
 
-// ByUse returns a key from RemoteKeyStore by use. If the keystore contains multiple keys with same use then first
-// key will be returned.
+// Returns a key from RemoteKeyStore by use. If the keystore contains
+// multiple keys with same use then first key will be returned.
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	now := time.Now()
 	if now.After(r.Expiry) {
@@ -47,8 +49,8 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("key not found")
 }
 
-// ById returns a key from RemoteKeyStore by key id. If the RemoteKeyStore contains multiple keys with same id then
-// first matching key is returned.
+// Returns a key from RemoteKeyStore by key id. If the RemoteKeyStore
+// contains multiple keys with same id then first matching key is returned.
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
 	now := time.Now()
 	if now.After(r.Expiry) {
@@ -80,8 +82,9 @@ func (r *RemoteKeyStore) updateKeys() error {
 	return nil
 }
 
-// providerRemoteKeys is a convenience method for fetching and unmashaling the provider jwks from the jwks_uri.
-// Returns a JWSONWebKeySet containing the keys.
+// providerRemoteKeys is a convenience method for fetching and unmarshaling
+// the provider jwks from the jwks_uri. Returns a JWSONWebKeySet containing
+// the keys.
 func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, error) {
 	keys, expiry, err := updateKeys(ctx, jwksUri)
 	if err != nil {
@@ -95,8 +98,8 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, e
 	}, nil
 }
 
-// updateKeys fetches the providers jwks from jwks_uri. The function respects cache headers and caches the results for
-// specified time period. updateKeys is
+// updateKeys fetches the providers jwks from jwks_uri. The function respects
+// cache headers and caches the results for specified time period. updateKeys is
 func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Time, error) {
 	req, err := http.NewRequest("GET", jwksUri, nil)
 	if err != nil {
@@ -135,7 +138,8 @@ func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Ti
 	return keySet.Keys, expiry, nil
 }
 
-// doRequest executes http request using either http.DefaultClient or the client specified in context if it's available.
+// doRequest executes http request using either http.DefaultClient or the
+// client specified in context if it's available.
 func doRequest(ctx context.Context, request *http.Request) (*http.Response, error) {
 	client := http.DefaultClient
 	if c, ok := ctx.Value(oauth2.HTTPClient).(*http.Client); ok {
