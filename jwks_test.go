@@ -116,6 +116,43 @@ var _ = Describe("Jwks tests", func() {
 				Expect(remoteKeys.Expiry).Should(BeTemporally(">=", now.Add(1*time.Hour)))
 			})
 
+			It("does not refresh the keys if keys are not expired", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				numberOfCalls := 0
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					numberOfCalls++
+					headers := http.Header{
+						"Content-Type":  {"application/json"},
+						"Cache-Control": {"max-age=3600"},
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
+
+				var expectedKeySet jose.JSONWebKeySet
+				err = json.Unmarshal([]byte(body), &expectedKeySet)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				now := time.Now()
+				origExpiry := remoteKeys.Expiry
+
+				// First call
+				actualSignKey, err := remoteKeys.ByUse("sig")
+				Expect(err).To(BeNil())
+				Expect(*actualSignKey).To(Equal(expectedKeySet.Keys[0]))
+				Expect(remoteKeys.Expiry).Should(BeTemporally(">=", now.Add(59*time.Minute+59*time.Second)))
+
+				// Second call
+				actualSignKey, err = remoteKeys.ByUse("sig")
+				Expect(err).To(BeNil())
+				Expect(remoteKeys.Expiry).Should(Equal(origExpiry))
+				Expect(numberOfCalls).To(Equal(1))
+			})
+
 			It("returns an error if key cannot be found", func() {
 				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
 				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
