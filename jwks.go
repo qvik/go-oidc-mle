@@ -23,6 +23,8 @@ type RemoteKeyStore struct {
 	mutex   sync.Mutex
 }
 
+// ByUse returns a key from RemoteKeyStore by use. If the keystore contains multiple keys with same use then first
+// key will be returned.
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	now := time.Now()
 	if now.After(r.Expiry) {
@@ -45,6 +47,8 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("key not found")
 }
 
+// ById returns a key from RemoteKeyStore by key id. If the RemoteKeyStore contains multiple keys with same id then
+// first matching key is returned.
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
 	now := time.Now()
 	if now.After(r.Expiry) {
@@ -63,7 +67,7 @@ func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("key not found")
 }
 
-// updateKeys updates the keys in RemoteKeyStore
+// updateKeys updates the keys and expiration in RemoteKeyStore.
 func (r *RemoteKeyStore) updateKeys() error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -91,6 +95,8 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, e
 	}, nil
 }
 
+// updateKeys fetches the providers jwks from jwks_uri. The function respects cache headers and caches the results for
+// specified time period. updateKeys is
 func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Time, error) {
 	req, err := http.NewRequest("GET", jwksUri, nil)
 	if err != nil {
