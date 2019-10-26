@@ -1,6 +1,9 @@
 # Go OIDC MLE
 
-This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. Message level encryption is a [Finnish peculiarity](https://developer.signicat.com/documentation/finnish-trust-network/full-message-level-encryption-for-ftn/).
+This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. The Finnish Transport and Communications Agency Traficom mandates message level encryption on electric identification and trust services. More information can be found from the [Requlation 72 on electronic identification and trust services](https://www.traficom.fi/en/regulations#%7B%22query%22%3A%2272%22%2C%22sort%22%3A%7B%22title%22%3A%22ASC%22%7D%2C%22limit%22%3A20%2C%22offset%22%3A0%2C%22filters%22%3A%7B%7D%7D).
+
+- [Requlation 72 on electronic identification and trust services (pdf)](https://www.finlex.fi/data/normit/42947/M72A-2018-EN-v2.pdf)
+- [Explanatory notes to Requlation 72 (pdf)](https://www.finlex.fi/data/normit/42947/M72A-MPS-EN.pdf)
 
 ## Usage
 
