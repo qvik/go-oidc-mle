@@ -46,7 +46,13 @@ var _ = Describe("utils tests", func() {
 		BeforeEach(func() {
 			encKeyId = generateId()
 			encKey, _ = rsa.GenerateKey(rand.Reader, 2048)
-			encKeyJwk = &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
+			encKeyJwk = &jose.JSONWebKey{
+				Key:          encKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        encKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
 			_, err = encKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 		})

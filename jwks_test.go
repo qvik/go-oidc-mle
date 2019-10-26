@@ -37,14 +37,26 @@ var _ = Describe("Jwks tests", func() {
 		BeforeEach(func() {
 			signKeyId = generateId()
 			signKey, _ = rsa.GenerateKey(rand.Reader, 2048)
-			signKeyJwk = &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
+			signKeyJwk = &jose.JSONWebKey{
+				Key:          signKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        signKeyId,
+				Algorithm:    "RS256",
+				Use:          "sig",
+			}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err = signKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
 			encKeyId = generateId()
 			encKey, _ = rsa.GenerateKey(rand.Reader, 2048)
-			encKeyJwk = &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
+			encKeyJwk = &jose.JSONWebKey{
+				Key:          encKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        encKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
 			encKeyMarshaled, err = encKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 		})
@@ -267,14 +279,26 @@ var _ = Describe("Jwks tests", func() {
 		It("updates the keys successfully", func() {
 			signKeyId := generateId()
 			signKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-			signKeyJwk := &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
+			signKeyJwk := &jose.JSONWebKey{
+				Key:          signKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        signKeyId,
+				Algorithm:    "RS256",
+				Use:          "sig",
+			}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err := signKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
 			encKeyId := generateId()
 			encKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-			encKeyJwk := &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
+			encKeyJwk := &jose.JSONWebKey{
+				Key:          encKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        encKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
 			encKeyMarshaled, err := encKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
@@ -347,14 +371,26 @@ var _ = Describe("Jwks tests", func() {
 		It("fails when response cache headers cannot be parsed", func() {
 			signKeyId := generateId()
 			signKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-			signKeyJwk := &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
+			signKeyJwk := &jose.JSONWebKey{
+				Key:          signKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        signKeyId,
+				Algorithm:    "RS256",
+				Use:          "sig",
+			}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err := signKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
 			encKeyId := generateId()
 			encKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-			encKeyJwk := &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
+			encKeyJwk := &jose.JSONWebKey{
+				Key:          encKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        encKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
 			encKeyMarshaled, err := encKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
@@ -380,14 +416,26 @@ var _ = Describe("Jwks tests", func() {
 		It("sets the expiration correctly from response cache control headers", func() {
 			signKeyId := generateId()
 			signKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-			signKeyJwk := &jose.JSONWebKey{Key: signKey.Public(), Certificates: []*x509.Certificate{}, KeyID: signKeyId, Algorithm: "RS256", Use: "sig"}
+			signKeyJwk := &jose.JSONWebKey{
+				Key:          signKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        signKeyId,
+				Algorithm:    "RS256",
+				Use:          "sig",
+			}
 			signKeyJwk.Certificates = nil
 			signKeyMarshaled, err := signKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
 			encKeyId := generateId()
 			encKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-			encKeyJwk := &jose.JSONWebKey{Key: encKey.Public(), Certificates: []*x509.Certificate{}, KeyID: encKeyId, Algorithm: "RSA-OAEP", Use: "enc"}
+			encKeyJwk := &jose.JSONWebKey{
+				Key:          encKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        encKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
 			encKeyMarshaled, err := encKeyJwk.MarshalJSON()
 			Expect(err).To(BeNil())
 
