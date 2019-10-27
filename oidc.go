@@ -231,7 +231,7 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 	if err != nil {
 		return "", err
 	}
-	encrypter, err := newEncrypter(encryptionKey)
+	encrypter, err := newEncrypter(o.ctx, encryptionKey)
 	if err != nil {
 		return "", err
 	}

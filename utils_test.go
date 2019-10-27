@@ -1,9 +1,11 @@
 package oidc
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"errors"
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
@@ -35,6 +37,73 @@ var _ = Describe("utils tests", func() {
 		})
 	})
 
+	Describe("mockEncrypter", func() {
+		var (
+			encrypter         mockEncrypter
+			jsonWebEncryption jose.JSONWebEncryption
+			options           jose.EncrypterOptions
+		)
+		BeforeEach(func() {
+			extraHeaders := map[jose.HeaderKey]interface{}{
+				jose.HeaderContentType:           "testing",
+				jose.HeaderKey("myCustomHeader"): "xyz",
+				jose.HeaderType:                  "JWE",
+			}
+			options = jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: extraHeaders,
+			}
+			header := jose.Header{
+				KeyID:        "testKeyId",
+				JSONWebKey:   nil,
+				Algorithm:    "RSA-OAEP",
+				Nonce:        "",
+				ExtraHeaders: nil,
+			}
+			jsonWebEncryption = jose.JSONWebEncryption{
+				Header: header,
+			}
+			encrypter = mockEncrypter{
+				encryption: jsonWebEncryption,
+				opts:       options,
+				error:      nil,
+			}
+		})
+
+		It("Encrypt(payload []byte) works correctly", func() {
+			actual, err := encrypter.Encrypt([]byte("lorem ipsum"))
+			Expect(err).To(BeNil())
+			Expect(actual).To(Equal(&jsonWebEncryption))
+		})
+
+		It("Encrypt(payload []byte) works correctly", func() {
+			expectedError := errors.New("test error")
+			encrypter.error = expectedError
+			actual, err := encrypter.Encrypt([]byte("lorem ipsum"))
+			Expect(actual).To(BeNil())
+			Expect(err).To(Equal(expectedError))
+		})
+
+		It("EncryptWithAuthData(payload, add []byte) works correctly", func() {
+			actual, err := encrypter.EncryptWithAuthData([]byte("lorem ipsum"), nil)
+			Expect(err).To(BeNil())
+			Expect(actual).To(Equal(&jsonWebEncryption))
+		})
+
+		It("correctly detects HTTP 300", func() {
+			expectedError := errors.New("test error")
+			encrypter.error = expectedError
+			actual, err := encrypter.EncryptWithAuthData([]byte("lorem ipsum"), nil)
+			Expect(actual).To(BeNil())
+			Expect(err).To(Equal(expectedError))
+		})
+
+		It("Options() works correctly", func() {
+			Expect(encrypter.Options()).To(Equal(options))
+		})
+
+	})
+
 	Describe("newEncrypter", func() {
 		var (
 			encKeyId  string
@@ -63,7 +132,31 @@ var _ = Describe("utils tests", func() {
 				ExtraHeaders: nil,
 			}
 			expectedOptions.WithType("JWE")
-			encrypter, err := newEncrypter(encKeyJwk)
+			ctx := context.Background()
+			encrypter, err := newEncrypter(ctx, encKeyJwk)
+			Expect(err).To(BeNil())
+			Expect(encrypter.Options().Compression).To(Equal(expectedOptions.Compression))
+			Expect(encrypter.Options().ExtraHeaders).To(Equal(expectedOptions.ExtraHeaders))
+		})
+
+		It("uses the encrypter in context if one is present", func() {
+			extraHeaders := map[jose.HeaderKey]interface{}{
+				jose.HeaderContentType:           "foo/bar",
+				jose.HeaderKey("myCustomHeader"): "xyz",
+			}
+			expectedOptions := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: extraHeaders,
+			}
+			expectedOptions.WithType("JWE")
+			mock := mockEncrypter{
+				encryption: jose.JSONWebEncryption{},
+				opts:       expectedOptions,
+				error:      nil,
+			}
+			ctx := context.Background()
+			ctxWithEncrypter := context.WithValue(ctx, EncrypterContextKey, mock)
+			encrypter, err := newEncrypter(ctxWithEncrypter, encKeyJwk)
 			Expect(err).To(BeNil())
 			Expect(encrypter.Options().Compression).To(Equal(expectedOptions.Compression))
 			Expect(encrypter.Options().ExtraHeaders).To(Equal(expectedOptions.ExtraHeaders))
@@ -71,7 +164,8 @@ var _ = Describe("utils tests", func() {
 
 		It("fails to create encrypter if the key is invalid", func() {
 			encKeyJwk.Algorithm = "INVALID"
-			_, err := newEncrypter(encKeyJwk)
+			ctx := context.Background()
+			_, err := newEncrypter(ctx, encKeyJwk)
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("square/go-jose: unknown/unsupported algorithm"))
 		})
