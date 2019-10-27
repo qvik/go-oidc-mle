@@ -102,7 +102,7 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 	}
 
 	var localKey jose.JSONWebKey
-	err = json.Unmarshal([]byte(config.MleKey), &localKey)
+	err = json.Unmarshal([]byte(config.LocalJWK), &localKey)
 	if err != nil {
 		return nil, err
 	}
