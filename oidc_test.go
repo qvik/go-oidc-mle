@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -824,6 +825,212 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("unable to unmarshal keys: square/go-jose: unknown json web key type 'RSA1'"))
 			Expect(client).To(BeNil())
+		})
+	})
+
+	Describe("AuthRequestURL", func() {
+		var (
+			remoteSignKeyId        string
+			remoteSignKey          *rsa.PrivateKey
+			remoteSignKeyJwk       *jose.JSONWebKey
+			remoteSignKeyMarshaled []byte
+			remoteEncKeyId         string
+			remoteEncKey           *rsa.PrivateKey
+			remoteEncKeyJwk        *jose.JSONWebKey
+			remoteEncKeyMarshaled  []byte
+			localEncKeyId          string
+			localEncKey            *rsa.PrivateKey
+			localEncKeyJwk         *jose.JSONWebKey
+			localEncKeyMarshaled   []byte
+			err                    error
+		)
+
+		BeforeEach(func() {
+			// Generate signing key for the provider
+			remoteSignKeyId = generateId()
+			remoteSignKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			remoteSignKeyJwk = &jose.JSONWebKey{
+				Key:          remoteSignKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        remoteSignKeyId,
+				Algorithm:    "RS256",
+				Use:          "sig",
+			}
+			remoteSignKeyJwk.Certificates = nil
+			remoteSignKeyMarshaled, err = remoteSignKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			// Generate encryption key for the provider
+			remoteEncKeyId = generateId()
+			remoteEncKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			remoteEncKeyJwk = &jose.JSONWebKey{
+				Key:          remoteEncKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        remoteEncKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
+			remoteEncKeyMarshaled, err = remoteEncKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			// Generate encryption key for the client
+			localEncKeyId = generateId()
+			localEncKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			localEncKeyJwk = &jose.JSONWebKey{
+				Key:          localEncKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        localEncKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
+			localEncKeyMarshaled, err = localEncKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			config = Config{
+				ClientId:     "exampleClientId",
+				ClientSecret: "exampleClientSecret",
+				Endpoint:     "https://example.com/oidc",
+				RedirectUri:  "https://example.com/redirect",
+				MleKey:       fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+				Scopes:       []string{"openid", "profile", "signicat.national_id"},
+			}
+
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					body := fmt.Sprintf(`{"keys":[%s,%s]}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
+				}
+			})
+		})
+
+		It("successfully generated authorization request url", func() {
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+			Expect(err).To(BeNil())
+
+			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
+			state := generateId()
+			opts := map[string]string{
+				"acr_values": fmt.Sprintf(acrValues),
+				"ui_locales": "en",
+			}
+			url, err := client.AuthRequestURL(state, opts)
+			Expect(err).To(BeNil())
+			Expect(strings.Contains(url, "https://example.com/oidc/authorize?request=")).To(BeTrue())
+
+			// TODO: For now we just decrypt the payload and check that the content is correct as mocking the
+			//      jose.JSONWebEncryption is not straightforward due to random iv etc. being private fields.
+			parts := strings.Split(url, "=")
+			parsedJWE, err := jose.ParseEncrypted(parts[1])
+			Expect(err).To(BeNil())
+
+			decryptedPayload, err := parsedJWE.Decrypt(remoteEncKey)
+			Expect(err).To(BeNil())
+
+			expectedScope := strings.Join(config.Scopes, " ")
+			expectedRequestObject := fmt.Sprintf(`{"acr_values":"%s","client_id":"%s","redirect_uri":"%s","response_type":"code","scope":"%s","state":"%s","ui_locales":"en"}`, acrValues, config.ClientId, config.RedirectUri, expectedScope, state)
+			Expect(decryptedPayload).To(Equal([]byte(expectedRequestObject)))
+		})
+
+		It("fails when provider encryption key is not available", func() {
+			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					body := fmt.Sprintf(`{"keys":[%s]}`, remoteSignKeyMarshaled)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
+				}
+			})
+
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+			Expect(err).To(BeNil())
+
+			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
+			state := generateId()
+			opts := map[string]string{
+				"acr_values": fmt.Sprintf(acrValues),
+				"ui_locales": "en",
+			}
+			url, err := client.AuthRequestURL(state, opts)
+			Expect(url).To(BeEmpty())
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("key not found"))
+		})
+
+		It("fails when provider encryption key is not valid", func() {
+			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					remoteEncKeyJwk.Algorithm = "INVALID"
+					remoteEncKeyMarshaled, err = remoteEncKeyJwk.MarshalJSON()
+					body := fmt.Sprintf(`{"keys":[%s, %s]}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
+				}
+			})
+
+			ctx := context.Background()
+			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
+			Expect(err).To(BeNil())
+
+			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
+			state := generateId()
+			opts := map[string]string{
+				"acr_values": fmt.Sprintf(acrValues),
+				"ui_locales": "en",
+			}
+			url, err := client.AuthRequestURL(state, opts)
+			Expect(url).To(BeEmpty())
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("square/go-jose: unknown/unsupported algorithm"))
+		})
+
+		It("fails when encrypter.Encrypter fails", func() {
+			mockError := errors.New("encrypter.Encrypt() failed")
+			encrypter := mockEncrypter{
+				encryption: jose.JSONWebEncryption{},
+				opts:       jose.EncrypterOptions{},
+				error:      mockError,
+			}
+			ctx := context.Background()
+			contextWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+			client, err := NewClientMLE(context.WithValue(contextWithClient, EncrypterContextKey, encrypter), &config)
+			Expect(err).To(BeNil())
+
+			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
+			state := generateId()
+			opts := map[string]string{
+				"acr_values": fmt.Sprintf(acrValues),
+				"ui_locales": "en",
+			}
+			url, err := client.AuthRequestURL(state, opts)
+			Expect(url).To(BeEmpty())
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("encrypter.Encrypt() failed"))
 		})
 	})
 })
