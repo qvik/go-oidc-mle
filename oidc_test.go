@@ -46,7 +46,7 @@ func newMockResponse(statusCode int, headers http.Header, body string) *http.Res
 	}
 }
 
-type User struct {
+type user struct {
 	Subject    string `json:"sub"`
 	Name       string `json:"name"`
 	SSN        string `json:"signicat.national_id"`
@@ -512,15 +512,15 @@ var _ = Describe("OIDCClient tests", func() {
 			ctx := context.Background()
 			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 
-			var user User
+			var userInfo user
 			oauth2Token := oauth2.Token{}
-			err := client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &user)
+			err := client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
 			Expect(err).To(BeNil())
-			Expect(user.Name).To(Equal("Väinö Tunnistus"))
-			Expect(user.Subject).To(Equal("IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr"))
-			Expect(user.GivenName).To(Equal("Väinö"))
-			Expect(user.Locale).To(Equal("FI"))
-			Expect(user.FamilyName).To(Equal("Tunnistus"))
+			Expect(userInfo.Name).To(Equal("Väinö Tunnistus"))
+			Expect(userInfo.Subject).To(Equal("IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr"))
+			Expect(userInfo.GivenName).To(Equal("Väinö"))
+			Expect(userInfo.Locale).To(Equal("FI"))
+			Expect(userInfo.FamilyName).To(Equal("Tunnistus"))
 		})
 
 		It("fails when userinfo endpoint fails to return user info", func() {
@@ -546,8 +546,8 @@ var _ = Describe("OIDCClient tests", func() {
 			oauth2Token := oauth2.Token{}
 			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 
-			var user User
-			err := client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &user)
+			var userInfo user
+			err := client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal(`unable to fetch user info: Internal Server Error: {"error": "internal server error"}`))
 		})
@@ -644,15 +644,16 @@ var _ = Describe("OIDCClient tests", func() {
 			ctx := context.Background()
 			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 
-			var user User
+			var userInfo user
 			code := generateId()
-			err = client.HandleCallback(code, &user)
+			err = client.HandleCallback(code, &userInfo)
 			Expect(err).To(BeNil())
-			Expect(user.Name).To(Equal("Väinö Tunnistus"))
-			Expect(user.Subject).To(Equal("IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr"))
-			Expect(user.GivenName).To(Equal("Väinö"))
-			Expect(user.Locale).To(Equal("FI"))
-			Expect(user.FamilyName).To(Equal("Tunnistus"))
+			Expect(userInfo.Name).To(Equal("Väinö Tunnistus"))
+			Expect(userInfo.Subject).To(Equal("IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr"))
+			Expect(userInfo.GivenName).To(Equal("Väinö"))
+			Expect(userInfo.Locale).To(Equal("FI"))
+			Expect(userInfo.FamilyName).To(Equal("Tunnistus"))
+
 		})
 
 		It("fails when userinfo endpoint fails to return user info", func() {
@@ -698,8 +699,8 @@ var _ = Describe("OIDCClient tests", func() {
 			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
 
 			code := generateId()
-			var user User
-			err = client.HandleCallback(code, user)
+			var userInfo user
+			err = client.HandleCallback(code, userInfo)
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("unable to exchange code for token"))
 		})
