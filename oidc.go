@@ -266,7 +266,7 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 		opts[key] = value
 	}
 
-	requestJSON, err := json.Marshal(opts)
+	requestPayload, err := json.Marshal(opts)
 	if err != nil {
 		return "", err
 	}
@@ -280,7 +280,7 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 		return "", err
 	}
 
-	data, err := encrypter.Encrypt(requestJSON)
+	data, err := encrypter.Encrypt(requestPayload)
 	if err != nil {
 		return "", err
 	}
@@ -316,12 +316,12 @@ func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (
 		return nil, errors.New("no id_token field in oauth2 token")
 	}
 
-	obj, err := jose.ParseEncrypted(rawIDToken)
+	parsedJWE, err := jose.ParseEncrypted(rawIDToken)
 	if err != nil {
 		return nil, errors.New("unable to parse encrypted id_token")
 	}
 
-	decryptedIdToken, err := obj.Decrypt(o.decryptionKey)
+	decryptedIdToken, err := parsedJWE.Decrypt(o.decryptionKey)
 	if err != nil {
 		return nil, errors.New("unable to decrypt id_token")
 	}
