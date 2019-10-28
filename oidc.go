@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/coreos/go-oidc"
@@ -19,11 +20,12 @@ import (
 
 // OIDCInterface defines the functions that the clients must implement.
 type OIDCInterface interface {
-	Exchange(string, map[string]string) (*oauth2.Token, error)
+	Exchange(string, map[string]string) (*Tokens, error)
+	ExchangeWithNonce(string, string, map[string]string) (*Tokens, error)
 	AuthRequestURL(string, map[string]string) (string, error)
 	Verify(string) (*oidc.IDToken, error)
 	UserInfo(oauth2.TokenSource, interface{}) error
-	HandleCallback(string, interface{}) error
+	HandleCallback(string, string, url.Values, interface{}) error
 }
 
 // Must is a convenience function to make sure that the OIDC client is
@@ -118,6 +120,12 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 	}, nil
 }
 
+// Tokens combines both the oauth2 token and the oidc specific idToken
+type Tokens struct {
+	Oauth2Token *oauth2.Token
+	IdToken     *oidc.IDToken
+}
+
 // OIDCClient provideswraps oauth2 and go-oidc libraries and provides
 // convenience functions for implementing OIDC authorization code flow.
 type OIDCClient struct {
@@ -129,7 +137,7 @@ type OIDCClient struct {
 }
 
 // Exchanges the authorization code to a token.
-func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
+func (o *OIDCClient) Exchange(code string, options map[string]string) (*Tokens, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		opts = append(opts, oauth2.SetAuthURLParam(key, value))
@@ -143,11 +151,28 @@ func (o *OIDCClient) Exchange(code string, options map[string]string) (*oauth2.T
 		return nil, fmt.Errorf("no id_token field in oauth2 token")
 	}
 
-	_, err = o.Verify(rawIDToken)
+	idToken, err := o.Verify(rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("unable to verify signature")
 	}
-	return oauth2Token, nil
+	return &Tokens{
+		Oauth2Token: oauth2Token,
+		IdToken:     idToken,
+	}, nil
+}
+
+// Exchanges the authorization code to a token and verifies the nonce
+func (o *OIDCClient) ExchangeWithNonce(code, nonce string, options map[string]string) (*Tokens, error) {
+	tokens, err := o.Exchange(code, options)
+	if err != nil {
+		return nil, err
+	}
+
+	if tokens.IdToken.Nonce != nonce {
+		return nil, fmt.Errorf("nonce is not the one specified. expected '%s', got '%s'", nonce, tokens.IdToken.Nonce)
+	}
+
+	return tokens, nil
 }
 
 // Returns the URL for authorization request.
@@ -159,7 +184,7 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]string) (st
 	return o.oauth2Config.AuthCodeURL(state, opts...), nil
 }
 
-// Verifies the signature of the token.
+// Verifies the signature of the token. Note that the possible nonce in
 func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
@@ -181,16 +206,39 @@ func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error 
 // HandleCallback is a convenience function which exchanges the authorization
 // code to token and then uses the token to request user information from user
 // info endpoint. The implementation does not use message level encryption.
-func (o *OIDCClient) HandleCallback(code string, user interface{}) error {
+func (o *OIDCClient) HandleCallback(state, nonce string, queryParams url.Values, user interface{}) error {
+	if len(queryParams.Get("error")) > 0 {
+		err := queryParams.Get("error")
+		errDescription := queryParams.Get("error_description")
+		return fmt.Errorf("authorization failed. error: %s, description: %s", err, errDescription)
+	}
+
+	if queryParams.Get("state") != state {
+		return errors.New("received state does not match the defined state")
+	}
+
+	code := queryParams.Get("code")
+	if code == "" {
+		return errors.New("authorization code missing")
+	}
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
 	}
-	oauth2Token, err := o.Exchange(code, options)
+
+	var (
+		tokens *Tokens
+		err    error
+	)
+	if nonce != "" {
+		tokens, err = o.ExchangeWithNonce(code, nonce, options)
+	} else {
+		tokens, err = o.Exchange(code, options)
+	}
 	if err != nil {
 		return err
 	}
 
-	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
+	return o.UserInfo(oauth2.StaticTokenSource(tokens.Oauth2Token), &user)
 }
 
 // OIDCClientEncrypted wraps oauth2 and oidc libraries and provides
@@ -250,14 +298,14 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 	return authRequestURL, nil
 }
 
-// Verifies the signature of a token
+// Verifies the signature of a token.
 func (o *OIDCClientEncrypted) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
 }
 
 // Exchanges the authorization code to a token.
-func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (*oauth2.Token, error) {
+func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (*Tokens, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		opts = append(opts, oauth2.SetAuthURLParam(key, value))
@@ -282,26 +330,47 @@ func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (
 		return nil, errors.New("unable to decrypt id_token")
 	}
 
-	_, err = o.Verify(string(decryptedIdToken))
+	idToken, err := o.Verify(string(decryptedIdToken))
 	if err != nil {
 		return nil, fmt.Errorf("unable to verify id_token: %v", err.Error())
 	}
-	return oauth2Token, nil
+
+	return &Tokens{
+		Oauth2Token: oauth2Token,
+		IdToken:     idToken,
+	}, nil
 }
 
-type userInfoURL struct {
-	Endpoint string `json:"userinfo_endpoint"`
+// Exchanges the authorization code to a token and verifies nonce
+func (o *OIDCClientEncrypted) ExchangeWithNonce(code, nonce string, options map[string]string) (*Tokens, error) {
+	tokens, err := o.Exchange(code, options)
+	if err != nil {
+		return nil, err
+	}
+
+	if tokens.IdToken.Nonce != nonce {
+		return nil, fmt.Errorf("nonce is not the one specified. expected '%s', got '%s'", nonce, tokens.IdToken.Nonce)
+	}
+	return tokens, nil
+}
+
+// Represents the providers endpoints
+type providerEndpoints struct {
+	AuthURL     string `json:"authorization_endpoint"`
+	TokenURL    string `json:"token_endpoint"`
+	JWKSURL     string `json:"jwks_uri"`
+	UserInfoURL string `json:"userinfo_endpoint"`
 }
 
 // Fetches user information from provider's user info endpoint.
-func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest interface{}) error {
-	var userInfoURL userInfoURL
-	err := o.provider.Claims(&userInfoURL)
+func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destination interface{}) error {
+	var endpoints providerEndpoints
+	err := o.provider.Claims(&endpoints)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest("GET", userInfoURL.Endpoint, nil)
+	req, err := http.NewRequest("GET", endpoints.UserInfoURL, nil)
 	if err != nil {
 		return err
 	}
@@ -340,7 +409,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 	if err != nil {
 		return fmt.Errorf("unable to find key with keyId '%s'", decryptedData.Headers[0].KeyID)
 	}
-	err = decryptedData.Claims(verificationKey, dest)
+	err = decryptedData.Claims(verificationKey, destination)
 	if err != nil {
 		return err
 	}
@@ -350,14 +419,37 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, dest inte
 // HandleCallback is a convenience function which exchanges the authorization
 // code to token and then uses the token to request user information from
 // user info endpoint. The implementation uses message level encryption.
-func (o *OIDCClientEncrypted) HandleCallback(code string, user interface{}) error {
+func (o *OIDCClientEncrypted) HandleCallback(state, nonce string, queryParams url.Values, user interface{}) error {
+	if len(queryParams.Get("error")) > 0 {
+		err := queryParams.Get("error")
+		errDescription := queryParams.Get("error_description")
+		return fmt.Errorf("authorization failed. error: %s, description: %s", err, errDescription)
+	}
+
+	if queryParams.Get("state") != state {
+		return errors.New("state does not match")
+	}
+
+	code := queryParams.Get("code")
+	if len(code) == 0 {
+		return errors.New("authorization code missing")
+	}
 	options := map[string]string{
 		"client_id": o.oauth2Config.ClientID,
 	}
-	oauth2Token, err := o.Exchange(code, options)
+
+	var (
+		tokens *Tokens
+		err    error
+	)
+	if nonce != "" {
+		tokens, err = o.ExchangeWithNonce(code, nonce, options)
+	} else {
+		tokens, err = o.Exchange(code, options)
+	}
 	if err != nil {
 		return err
 	}
 
-	return o.UserInfo(oauth2.StaticTokenSource(oauth2Token), &user)
+	return o.UserInfo(oauth2.StaticTokenSource(tokens.Oauth2Token), &user)
 }

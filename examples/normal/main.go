@@ -36,9 +36,10 @@ func main() {
 		RedirectUri:  "http://localhost:5000/redirect",
 		Scopes:       []string{"openid", "profile", "signicat.national_id"},
 	}
-	provider := oidc.Must(oidc.NewClient(ctx, &config))
+	client := oidc.Must(oidc.NewClient(ctx, &config))
 
 	state := generateId()
+	nonce := generateId()
 
 	// Use one of the following authentication methods:
 	//  - ftn-aktia-auth
@@ -60,8 +61,9 @@ func main() {
 		opts := map[string]string{
 			"acr_values": fmt.Sprintf("urn:signicat:oidc:method:%s", method),
 			"ui_locales": "fi",
+			"nonce":      nonce,
 		}
-		url, err := provider.AuthRequestURL(state, opts)
+		url, err := client.AuthRequestURL(state, opts)
 		if err != nil {
 			log.Println("unable to get authorization request uri:", err.Error())
 			body := fmt.Sprintf(`{"error": "%s"}`, http.StatusText(http.StatusInternalServerError))
@@ -72,28 +74,8 @@ func main() {
 	})
 
 	http.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Query().Get("error")) > 0 {
-			authError := r.URL.Query().Get("error")
-			authErrorDescription := r.URL.Query().Get("error_description")
-			body := fmt.Sprintf(`{"error": "%s", "description": "%s"}`, authError, authErrorDescription)
-			http.Error(w, body, http.StatusBadRequest)
-			return
-		}
-
-		if r.URL.Query().Get("state") != state {
-			http.Error(w, "state did not match the expected", http.StatusBadRequest)
-			return
-		}
-
-		code := r.URL.Query().Get("code")
-		if len(code) <= 0 {
-			body := `{"error": "missing authorization code"}`
-			http.Error(w, body, http.StatusBadRequest)
-			return
-		}
-
 		var userInfo User
-		err := provider.HandleCallback(code, &userInfo)
+		err := client.HandleCallback(state, nonce, r.URL.Query(), &userInfo)
 		if err != nil {
 			body := `{"error": "failed to exchange authorization code to token"}`
 			http.Error(w, body, http.StatusInternalServerError)

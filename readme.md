@@ -42,18 +42,20 @@ To get started with OIDC, on must initialize the client. In this example we inti
 
 ```go
 ctx := context.Background()
-provider := oidc.Must(oidc.NewClientMLE(ctx, &config))
+client := oidc.Must(oidc.NewClientMLE(ctx, &config))
 ```
 
 To create authorization request one might need to provide some addition options. The example is for Signicat and defines that ftn-op-auth authentication method shall be used and the user interface language is Finnish. The state should be something that is not easy to guess such as UUID.
 
 ```go
+state := "oneTimeStateHere"
+nonce := "oneTimeNonceHere"
 options := map[string]string{
     "acr_values": fmt.Sprintf("urn:signicat:oidc:method:ftn-op-auth"),
     "ui_locales": "fi",
+    "nonce":      nonce,
 }
-state := "do_not_do_this_in_real_implementation"
-url, err := provider.AuthRequestURL(state, options)
+url, err := client.AuthRequestURL(state, options)
 if err != nil {
     log.Fatal("failed to create authorization request url:", err.Error())
 }
@@ -62,7 +64,7 @@ log.Printf("Authorization URL: %s\n", url)
 
 The next step is to redirect the user to the authorization url. Once the user has completed the authorization process, the service provider will redirect the customer to the redirect_uri that was specified as part of the config.
 
-In the redirect uri handler the request should be validated. Namely error and error_description query parameters should not be present. In addition, the state should match to the one specified as part of the authorization request. If everything checks out you can proceed to exchanging the authorization code for token.
+In the redirect uri handler the request should be validated. Namely error and error_description query parameters should not be present. In addition, the state should match to the one specified as part of the authorization request. If nonce was specified as part of the authorization request, the id_token should contain the same nonce unmodified. If everything checks out you can proceed to exchanging the authorization code for token. Go-oidc-mle provides a convenience method HandleCallback which validates the request, nonce and state. Alternatively you can do the same manually.
 
 Define a type for the data you're expecting to receive from the user info endpoint of the service provider. The content depends on the scope that you specified. Once again the example below is for the scope that we specified in the config for Signicat.
 ```go
@@ -76,10 +78,10 @@ type User struct {
 }
 ```
 
-Exchange the authorization code for user info.
+Exchange the authorization code for access token and request user info.
 ```go
 var userInfo User
-err = provider.HandleCallback(code, &userInfo)
+err = client.HandleCallback(state, nonce, req.URL.Query(), &userInfo)
 if err != nil {
     log.Fatalln("unable to handle callback:", err.Error())
 }
@@ -96,8 +98,6 @@ log.Println(string(data))
 ```
 
 Congratulation, you've now successfully received the user information you requested.
-
-HandleCallback is just a convenience method combining the process of exchanging the authorization code to token and requesting user information from user info endpoint.
 
 ## Documentation
 
