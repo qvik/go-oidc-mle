@@ -556,7 +556,7 @@ var _ = Describe("OIDCClient tests", func() {
 	Describe("HandleCallback", func() {
 		BeforeEach(func() {
 			config = Config{
-				ClientId:     "demo-preprod",
+				ClientId:     "exampleClientId",
 				ClientSecret: "exampleClientSecret",
 				Endpoint:     "https://example.com/oidc",
 				RedirectUri:  "http://localhost:5000/redirect",
@@ -575,7 +575,7 @@ var _ = Describe("OIDCClient tests", func() {
 			idTokenClaims := jwt.Claims{
 				Issuer:    "https://example.com/oidc",
 				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
-				Audience:  []string{"demo-preprod"},
+				Audience:  []string{"exampleClientId"},
 				Expiry:    jwt.NewNumericDate(in10mins),
 				NotBefore: jwt.NewNumericDate(now),
 				IssuedAt:  jwt.NewNumericDate(now),
@@ -584,7 +584,7 @@ var _ = Describe("OIDCClient tests", func() {
 			accessTokenClaims := jwt.Claims{
 				Issuer:    "https://example.com/oidc",
 				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
-				Audience:  []string{"demo-preprod"},
+				Audience:  []string{"exampleClientId"},
 				Expiry:    jwt.NewNumericDate(in10mins),
 				NotBefore: jwt.NewNumericDate(now),
 				IssuedAt:  jwt.NewNumericDate(now),
