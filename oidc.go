@@ -77,17 +77,13 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
 	}
 
-	type jwksUriJSON struct {
-		Uri string `json:"jwks_uri"`
-	}
-
-	var jwksUri jwksUriJSON
-	err = oidcProvider.Claims(&jwksUri)
+	var endpoints providerEndpoints
+	err = oidcProvider.Claims(&endpoints)
 	if err != nil {
 		return nil, err
 	}
 
-	remoteKeySet, err := providerRemoteKeys(ctx, jwksUri.Uri)
+	remoteKeySet, err := providerRemoteKeys(ctx, endpoints.JwksURL)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +354,7 @@ func (o *OIDCClientEncrypted) ExchangeWithNonce(code, nonce string, options map[
 type providerEndpoints struct {
 	AuthURL     string `json:"authorization_endpoint"`
 	TokenURL    string `json:"token_endpoint"`
-	JWKSURL     string `json:"jwks_uri"`
+	JwksURL     string `json:"jwks_uri"`
 	UserInfoURL string `json:"userinfo_endpoint"`
 }
 
