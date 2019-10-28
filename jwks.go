@@ -28,7 +28,7 @@ type RemoteKeyStore struct {
 // Returns a key from RemoteKeyStore by use. If the keystore contains
 // multiple keys with same use then first key will be returned.
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	if now.After(r.Expiry) {
 		r.mutex.Lock()
 		defer r.mutex.Unlock()
@@ -52,7 +52,7 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 // Returns a key from RemoteKeyStore by key id. If the RemoteKeyStore
 // contains multiple keys with same id then first matching key is returned.
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 	if now.After(r.Expiry) {
 		err := r.updateKeys()
 		if err != nil {
@@ -127,7 +127,7 @@ func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Ti
 		return nil, time.Time{}, fmt.Errorf("unable to unmarshal keys: %v", err)
 	}
 
-	expiry := time.Now()
+	expiry := time.Now().UTC()
 	_, exp, err := cachecontrol.CachableResponse(req, resp, cachecontrol.Options{})
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("unable to parse response cache headers: %v", err)

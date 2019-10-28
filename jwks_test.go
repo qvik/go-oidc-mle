@@ -118,7 +118,7 @@ var _ = Describe("Jwks tests", func() {
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
-				now := time.Now()
+				now := time.Now().UTC()
 				Expect(remoteKeys.Expiry).Should(BeTemporally("<=", now))
 
 				actualSignKey, err := remoteKeys.ByUse("sig")
@@ -148,7 +148,7 @@ var _ = Describe("Jwks tests", func() {
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
-				now := time.Now()
+				now := time.Now().UTC()
 				origExpiry := remoteKeys.Expiry
 
 				// First call
@@ -243,7 +243,7 @@ var _ = Describe("Jwks tests", func() {
 				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
 				Expect(err).To(BeNil())
 
-				now := time.Now()
+				now := time.Now().UTC()
 				Expect(remoteKeys.Expiry).Should(BeTemporally("<=", now))
 
 				actualSignKey, err := remoteKeys.ById(signKeyId)
@@ -318,7 +318,7 @@ var _ = Describe("Jwks tests", func() {
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
-			now := time.Now()
+			now := time.Now().UTC()
 			Expect(jwks).To(Equal(expectedKeySet.Keys))
 			Expect(expiry).Should(BeTemporally("<=", now))
 			Expect(err).To(BeNil())
@@ -452,7 +452,7 @@ var _ = Describe("Jwks tests", func() {
 			err = json.Unmarshal([]byte(body), &expectedKeySet)
 			Expect(err).To(BeNil())
 
-			now := time.Now()
+			now := time.Now().UTC()
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)

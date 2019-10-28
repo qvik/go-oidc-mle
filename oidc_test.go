@@ -275,8 +275,8 @@ var _ = Describe("OIDCClient tests", func() {
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
-			now := time.Now()
-			in10mins := time.Now().Add(10 * time.Minute)
+			now := time.Now().UTC()
+			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			idTokenClaims := jwtClaims{
 				Issuer:    "https://example.com/oidc",
 				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
@@ -370,14 +370,14 @@ var _ = Describe("OIDCClient tests", func() {
 				Fail("unable to marshal generated public key")
 			}
 
-			in10mins := time.Now().Add(10 * time.Minute)
+			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			accessTokenClaims := jwtClaims{
 				Issuer:    "https://example.com/oidc",
 				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
 				Audience:  []string{"demo-preprod"},
 				Expiry:    jwt.NewNumericDate(in10mins),
-				NotBefore: jwt.NewNumericDate(time.Now()),
-				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				NotBefore: jwt.NewNumericDate(time.Now().UTC()),
+				IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 				ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
 			}
 
@@ -487,8 +487,8 @@ var _ = Describe("OIDCClient tests", func() {
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
-			now := time.Now()
-			in10mins := time.Now().Add(10 * time.Minute)
+			now := time.Now().UTC()
+			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			audience := []string{config.ClientId}
 			nonce := generateId()
 			idTokenClaims := jwtClaims{
@@ -727,8 +727,8 @@ var _ = Describe("OIDCClient tests", func() {
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
-			now := time.Now()
-			in10mins := time.Now().Add(10 * time.Minute)
+			now := time.Now().UTC()
+			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			nonce := generateId()
 			idTokenClaims := jwtClaims{
 				Issuer:    "https://example.com/oidc",
@@ -825,8 +825,8 @@ var _ = Describe("OIDCClient tests", func() {
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
-			now := time.Now()
-			in10mins := time.Now().Add(10 * time.Minute)
+			now := time.Now().UTC()
+			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			nonMatchingNonce := generateId()
 			idTokenClaims := jwtClaims{
 				Issuer:    "https://example.com/oidc",
@@ -1503,8 +1503,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 		It("successfully exchanges authorization code for token", func() {
 			ctx := context.Background()
-			now := time.Now()
-			in10mins := time.Now().Add(10 * time.Minute)
+			now := time.Now().UTC()
+			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			audience := []string{"exampleClientId"}
 			idTokenClaims := jwtClaims{
 				Issuer:    "https://example.com/oidc",
