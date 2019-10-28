@@ -271,7 +271,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("successfully exchanges authorization code for token", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -297,13 +298,9 @@ var _ = Describe("OIDCClient tests", func() {
 			}
 
 			idToken, err := buildSignedJWTToken(key, keyId, idTokenClaims)
-			if err != nil {
-				Fail("unable to create idToken")
-			}
+			Expect(err).To(BeNil())
 			accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
-			if err != nil {
-				Fail("unable to create accessToken")
-			}
+			Expect(err).To(BeNil())
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -363,12 +360,11 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("fails when oauth2 token does not contain id_token", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public key")
-			}
+			Expect(err).To(BeNil())
 
 			in10mins := time.Now().UTC().Add(10 * time.Minute)
 			accessTokenClaims := jwtClaims{
@@ -382,9 +378,8 @@ var _ = Describe("OIDCClient tests", func() {
 			}
 
 			accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
-			if err != nil {
-				Fail("unable to create accessToken")
-			}
+			Expect(err).To(BeNil())
+
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
 					"Content-Type": {"application/json"},
@@ -428,12 +423,11 @@ var _ = Describe("OIDCClient tests", func() {
 		})
 
 		It("fails when code cannot be exchanged to oauth2 token", func() {
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: "test key id", Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
-			if err != nil {
-				Fail("unable to marshal generated public key")
-			}
+			Expect(err).To(BeNil())
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -577,7 +571,8 @@ var _ = Describe("OIDCClient tests", func() {
 			}
 
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 			nonce := generateId()
@@ -723,7 +718,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("successfully handles the callback", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -751,13 +747,9 @@ var _ = Describe("OIDCClient tests", func() {
 			}
 
 			idToken, err := buildSignedJWTToken(key, keyId, idTokenClaims)
-			if err != nil {
-				Fail("unable to create idToken")
-			}
+			Expect(err).To(BeNil())
 			accessToken, err := buildSignedJWTToken(key, keyId, accessTokenClaims)
-			if err != nil {
-				Fail("unable to create accessToken")
-			}
+			Expect(err).To(BeNil())
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -821,7 +813,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("fails if nonce does not match the one defined in authorization request", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -903,7 +896,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("fails when userinfo endpoint fails to return user info", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -957,7 +951,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("fails when query params contain error parameter", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -1000,7 +995,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("fails when the state does not match", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -1042,7 +1038,8 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("fails when authorization code is missing", func() {
 			keyId := generateId()
-			key, _ := rsa.GenerateKey(rand.Reader, 2048)
+			key, err := rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
 			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
 
@@ -1223,7 +1220,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 		BeforeEach(func() {
 			// Generate signing key for the provider
 			remoteSignKeyId = generateId()
-			remoteSignKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			remoteSignKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			remoteSignKeyJwk = &jose.JSONWebKey{
 				Key:          remoteSignKey.Public(),
 				Certificates: []*x509.Certificate{},
@@ -1237,7 +1235,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			// Generate encryption key for the provider
 			remoteEncKeyId = generateId()
-			remoteEncKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			remoteEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			remoteEncKeyJwk = &jose.JSONWebKey{
 				Key:          remoteEncKey.Public(),
 				Certificates: []*x509.Certificate{},
@@ -1250,7 +1249,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			// Generate encryption key for the client
 			localEncKeyId = generateId()
-			localEncKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			localEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			localEncKeyJwk = &jose.JSONWebKey{
 				Key:          localEncKey,
 				Certificates: []*x509.Certificate{},
@@ -1430,7 +1430,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 		BeforeEach(func() {
 			// Generate signing key for the provider
 			remoteSignKeyId = generateId()
-			remoteSignKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			remoteSignKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			remoteSignKeyJwk = &jose.JSONWebKey{
 				Key:          remoteSignKey.Public(),
 				Certificates: []*x509.Certificate{},
@@ -1444,7 +1445,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			// Generate encryption key for the provider
 			remoteEncKeyId = generateId()
-			remoteEncKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			remoteEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			remoteEncKeyJwk = &jose.JSONWebKey{
 				Key:          remoteEncKey.Public(),
 				Certificates: []*x509.Certificate{},
@@ -1457,7 +1459,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			// Generate encryption key for the client
 			localEncKeyId = generateId()
-			localEncKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+			localEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
 			localEncKeyJwk = &jose.JSONWebKey{
 				Key:          localEncKey,
 				Certificates: []*x509.Certificate{},
@@ -1604,9 +1607,7 @@ func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims jwtClaims) (s
 		Key:       key,
 	}
 	rsaSigner, err := jose.NewSigner(signingKey, &signerOpts)
-	if err != nil {
-		Fail(err.Error())
-	}
+	Expect(err).To(BeNil())
 
 	return jwt.Signed(rsaSigner).Claims(claims).CompactSerialize()
 }
