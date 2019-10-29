@@ -308,7 +308,7 @@ func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (
 	}
 	oauth2Token, err := o.oauth2Config.Exchange(o.ctx, code, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch oauth2 token: %v", err.Error())
+		return nil, errors.New("unable to exchange authorization code to token")
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
@@ -328,7 +328,7 @@ func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (
 
 	idToken, err := o.Verify(string(decryptedIdToken))
 	if err != nil {
-		return nil, fmt.Errorf("unable to verify id_token: %v", err.Error())
+		return nil, errors.New("unable to verify id_token signature")
 	}
 
 	return &Tokens{
