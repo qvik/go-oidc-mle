@@ -1940,6 +1940,301 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("unable to verify id_token signature"))
 		})
+
+		Describe("ExchangeWithNonce", func() {
+			var (
+				remoteSignKeyId        string
+				remoteSignKey          *rsa.PrivateKey
+				remoteSignKeyJwk       *jose.JSONWebKey
+				remoteSignKeyMarshaled []byte
+				remoteEncKeyId         string
+				remoteEncKey           *rsa.PrivateKey
+				remoteEncKeyJwk        *jose.JSONWebKey
+				remoteEncKeyMarshaled  []byte
+				localEncKeyId          string
+				localEncKey            *rsa.PrivateKey
+				localEncKeyJwk         *jose.JSONWebKey
+				localEncKeyPubJwk      *jose.JSONWebKey
+				localEncKeyMarshaled   []byte
+				err                    error
+			)
+
+			BeforeEach(func() {
+				// Generate signing key for the provider
+				remoteSignKeyId = generateId()
+				remoteSignKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				remoteSignKeyJwk = &jose.JSONWebKey{
+					Key:          remoteSignKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        remoteSignKeyId,
+					Algorithm:    "RS256",
+					Use:          "sig",
+				}
+				remoteSignKeyJwk.Certificates = nil
+				remoteSignKeyMarshaled, err = remoteSignKeyJwk.MarshalJSON()
+				Expect(err).To(BeNil())
+
+				// Generate encryption key for the provider
+				remoteEncKeyId = generateId()
+				remoteEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				remoteEncKeyJwk = &jose.JSONWebKey{
+					Key:          remoteEncKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        remoteEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+				remoteEncKeyMarshaled, err = remoteEncKeyJwk.MarshalJSON()
+				Expect(err).To(BeNil())
+
+				// Generate encryption key for the client
+				localEncKeyId = generateId()
+				localEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				localEncKeyJwk = &jose.JSONWebKey{
+					Key:          localEncKey,
+					Certificates: []*x509.Certificate{},
+					KeyID:        localEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+				localEncKeyPubJwk = &jose.JSONWebKey{
+					Key:          localEncKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        localEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+				localEncKeyMarshaled, err = localEncKeyJwk.MarshalJSON()
+				Expect(err).To(BeNil())
+
+				config = Config{
+					ClientId:     "exampleClientId",
+					ClientSecret: "exampleClientSecret",
+					Endpoint:     "https://example.com/oidc",
+					RedirectUri:  "https://example.com/redirect",
+					LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+					Scopes:       []string{"openid", "profile", "signicat.national_id"},
+				}
+			})
+
+			It("successfully exchanges authorization code for token and validates the nonce", func() {
+				ctx := context.Background()
+				now := time.Now().UTC()
+				in10mins := time.Now().UTC().Add(10 * time.Minute)
+				audience := []string{"exampleClientId"}
+				nonce := generateId()
+				idTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					Nonce:     nonce,
+				}
+
+				accessTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+				}
+
+				idToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+				Expect(err).To(BeNil())
+				accessToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
+				Expect(err).To(BeNil())
+
+				// encrypt the mocked response with client's public key
+				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+				Expect(err).To(BeNil())
+
+				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
+				Expect(err).To(BeNil())
+
+				serializedIdToken, err := encryptedIdToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+					} else if req.URL.Path == "/oidc/token" {
+						body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else if req.URL.Path == "/oidc/jwks.json" {
+						body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					}
+				})
+
+				client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+				options := map[string]string{
+					"client_id": "exampleClientId",
+				}
+
+				code := generateId()
+				tokens, err := client.ExchangeWithNonce(code, nonce, options)
+				Expect(err).To(BeNil())
+				Expect(tokens.Oauth2Token.Expiry.Unix()).To(Equal(accessTokenClaims.Expiry.Time().Unix()))
+				Expect(tokens.Oauth2Token.TokenType).To(Equal("Bearer"))
+				Expect(tokens.Oauth2Token.RefreshToken).To(Equal("4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4"))
+				Expect(tokens.Oauth2Token.AccessToken).To(Equal(accessToken))
+
+				Expect(tokens.IdToken.Expiry.Unix()).To(Equal(in10mins.Unix()))
+				Expect(tokens.IdToken.Nonce).To(Equal(idTokenClaims.Nonce))
+				Expect(tokens.IdToken.Subject).To(Equal(idTokenClaims.Subject))
+				Expect(tokens.IdToken.Audience).To(Equal(audience))
+				Expect(tokens.IdToken.IssuedAt).To(Equal(idTokenClaims.IssuedAt.Time()))
+				Expect(tokens.IdToken.Issuer).To(Equal(idTokenClaims.Issuer))
+			})
+
+			It("fails to exchange authorization code for token if nonce does not match the specified nonce", func() {
+				ctx := context.Background()
+				now := time.Now().UTC()
+				in10mins := time.Now().UTC().Add(10 * time.Minute)
+				audience := []string{"exampleClientId"}
+				invalidNonce := generateId()
+				idTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					Nonce:     invalidNonce,
+				}
+
+				accessTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+				}
+
+				idToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+				Expect(err).To(BeNil())
+				accessToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
+				Expect(err).To(BeNil())
+
+				// encrypt the mocked response with client's public key
+				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+				Expect(err).To(BeNil())
+
+				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
+				Expect(err).To(BeNil())
+
+				serializedIdToken, err := encryptedIdToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+					} else if req.URL.Path == "/oidc/token" {
+						body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else if req.URL.Path == "/oidc/jwks.json" {
+						body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					}
+				})
+
+				client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+				options := map[string]string{
+					"client_id": "exampleClientId",
+				}
+
+				code := generateId()
+				nonce := generateId()
+				tokens, err := client.ExchangeWithNonce(code, nonce, options)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal(fmt.Sprintf("nonce is not the one specified. expected '%s', got '%s'", nonce, idTokenClaims.Nonce)))
+				Expect(tokens).To(BeNil())
+
+			})
+
+			It("fails to exchange when provider's token endpoint returns an error", func() {
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+					} else if req.URL.Path == "/oidc/token" {
+						body := `{"error": "internal server error"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					} else if req.URL.Path == "/oidc/jwks.json" {
+						body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					}
+				})
+
+				ctx := context.Background()
+				nonce := generateId()
+				client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+				options := map[string]string{
+					"client_id": "exampleClientId",
+				}
+
+				code := generateId()
+				tokens, err := client.ExchangeWithNonce(code, nonce, options)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("unable to exchange authorization code to token"))
+				Expect(tokens).To(BeNil())
+			})
+		})
 	})
 })
 
