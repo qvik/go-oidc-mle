@@ -9,6 +9,9 @@ import (
 
 const EncrypterContextKey string = "EncrypterContextKey"
 
+// Scope value that the client uses to request openid connect authentication
+const scopeOpenID string = "openid"
+
 // TODO(janne): find a better way to enable mocking with go-jose
 // mockEncrypter is only used to enable mocking the jose.Encrypter for testing
 // purposes. However, we need to define it here to be able to get the value
@@ -69,4 +72,15 @@ func statusCodeIs2xx(statusCode int) bool {
 		return false
 	}
 	return true
+}
+
+// Adds "openid" to the scope if not present
+func addOpenIdToScope(scope []string) []string {
+	for _, value := range scope {
+		if value == scopeOpenID {
+			return scope
+		}
+	}
+
+	return append([]string{scopeOpenID}, scope...)
 }

@@ -43,6 +43,7 @@ func Must(client OIDCInterface, err error) OIDCInterface {
 // OIDC authorization code flow. Discovery is used to read the provider's oidc
 // configuration.
 func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
+	config.Scopes = addOpenIdToScope(config.Scopes)
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
@@ -72,6 +73,7 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 // to implement OIDC authorization code flow with message level encryption.
 // Discovery is used to read the provider's oidc configuration.
 func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, error) {
+	config.Scopes = addOpenIdToScope(config.Scopes)
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
@@ -122,7 +124,7 @@ type Tokens struct {
 	IdToken     *oidc.IDToken
 }
 
-// OIDCClient provideswraps oauth2 and go-oidc libraries and provides
+// OIDCClient wraps oauth2 and go-oidc libraries and provides
 // convenience functions for implementing OIDC authorization code flow.
 type OIDCClient struct {
 	oauth2Config *oauth2.Config

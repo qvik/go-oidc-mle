@@ -171,4 +171,17 @@ var _ = Describe("utils tests", func() {
 			Expect(err.Error()).To(Equal("square/go-jose: unknown/unsupported algorithm"))
 		})
 	})
+
+	Describe("addOpenIdToScope", func() {
+		It("adds openid to scope if not present", func() {
+			input := []string{"one", "two", "three"}
+			expected := append([]string{"openid"}, input...)
+			Expect(addOpenIdToScope(input)).To(Equal(expected))
+		})
+
+		It("doesn't add openid if already specified in the scope", func() {
+			input := []string{"one", "two", "openid", "three"}
+			Expect(addOpenIdToScope(input)).To(Equal(input))
+		})
+	})
 })
