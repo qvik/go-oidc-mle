@@ -388,7 +388,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 	}
 	defer response.Body.Close()
 	if !statusCodeIs2xx(response.StatusCode) {
-		return fmt.Errorf("unable to fetch authorization token. received status code: %d", response.StatusCode)
+		return fmt.Errorf("unable to fetch user info, received status: %s", response.Status)
 	}
 
 	webToken, err := jwt.ParseSignedAndEncrypted(string(body))
@@ -398,7 +398,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 
 	decryptedData, err := webToken.Decrypt(o.decryptionKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to decrypt payload: %v", err)
 	}
 
 	verificationKey, err := o.remoteKeySet.ById(decryptedData.Headers[0].KeyID)
