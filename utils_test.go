@@ -126,12 +126,13 @@ var _ = Describe("utils tests", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("correctly creates encrypted", func() {
+		It("correctly creates encrypter", func() {
 			expectedOptions := jose.EncrypterOptions{
 				Compression:  "",
 				ExtraHeaders: nil,
 			}
 			expectedOptions.WithType("JWE")
+			expectedOptions.WithHeader(jose.HeaderContentType, "JWT")
 			ctx := context.Background()
 			encrypter, err := newEncrypter(ctx, encKeyJwk)
 			Expect(err).To(BeNil())

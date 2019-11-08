@@ -47,6 +47,7 @@ func newEncrypter(ctx context.Context, key *jose.JSONWebKey) (jose.Encrypter, er
 		ExtraHeaders: nil,
 	}
 	options.WithType("JWE")
+	options.WithHeader(jose.HeaderContentType, "JWT")
 
 	encrypter, err := jose.NewEncrypter(enc, jose.Recipient{
 		Algorithm: alg,
