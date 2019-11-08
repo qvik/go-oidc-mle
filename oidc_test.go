@@ -2235,10 +2235,383 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(tokens).To(BeNil())
 			})
 		})
+
+		Describe("UserInfo", func() {
+			var (
+				remoteSignKeyId            string
+				remoteSignKey              *rsa.PrivateKey
+				remoteSignKeyJwk           *jose.JSONWebKey
+				remoteSignKeyMarshaled     []byte
+				remoteWrongEncKeyId        string
+				remoteWrongEncKey          *rsa.PrivateKey
+				remoteWrongEncKeyJwk       *jose.JSONWebKey
+				remoteWrongEncKeyMarshaled []byte
+				localEncKeyId              string
+				localEncKey                *rsa.PrivateKey
+				localEncKeyJwk             *jose.JSONWebKey
+				localEncKeyPubJwk          *jose.JSONWebKey
+				localEncKeyMarshaled       []byte
+				err                        error
+			)
+
+			BeforeEach(func() {
+				// Generate signing key for the provider
+				remoteSignKeyId = generateId()
+				remoteSignKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				remoteSignKeyJwk = &jose.JSONWebKey{
+					Key:          remoteSignKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        remoteSignKeyId,
+					Algorithm:    "RS256",
+					Use:          "sig",
+				}
+				remoteSignKeyJwk.Certificates = nil
+				remoteSignKeyMarshaled, err = remoteSignKeyJwk.MarshalJSON()
+				Expect(err).To(BeNil())
+
+				// Generate encryption key for the provider
+				remoteWrongEncKeyId = generateId()
+				remoteWrongEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				remoteWrongEncKeyJwk = &jose.JSONWebKey{
+					Key:          remoteWrongEncKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        remoteWrongEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+				remoteWrongEncKeyMarshaled, err = remoteWrongEncKeyJwk.MarshalJSON()
+				Expect(err).To(BeNil())
+
+				// Generate encryption key for the client
+				localEncKeyId = generateId()
+				localEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				localEncKeyJwk = &jose.JSONWebKey{
+					Key:          localEncKey,
+					Certificates: []*x509.Certificate{},
+					KeyID:        localEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+				localEncKeyPubJwk = &jose.JSONWebKey{
+					Key:          localEncKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        localEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+				localEncKeyMarshaled, err = localEncKeyJwk.MarshalJSON()
+				Expect(err).To(BeNil())
+
+				config = Config{
+					ClientId:     "exampleClientId",
+					ClientSecret: "exampleClientSecret",
+					Endpoint:     "https://example.com/oidc",
+					RedirectUri:  "https://example.com/redirect",
+					LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+					Scopes:       []string{"openid", "profile", "signicat.national_id"},
+				}
+			})
+
+			It("successfully fetches the user info", func() {
+				now := time.Now().UTC()
+				in10mins := time.Now().UTC().Add(10 * time.Minute)
+				audience := []string{"exampleClientId"}
+				nonce := generateId()
+				idTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					Nonce:     nonce,
+				}
+
+				accessTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+				}
+
+				// TODO: add "ftn.idpId":"fi-op"
+				userInfoClaims := user{
+					Subject:    "IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+					Name:       "Väinö Tunnistus",
+					GivenName:  "Väinö",
+					Locale:     "FI",
+					SSN:        "123456-123A",
+					FamilyName: "Tunnistus",
+				}
+
+				idToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+				Expect(err).To(BeNil())
+				accessToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
+				Expect(err).To(BeNil())
+				userInfoToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, userInfoClaims)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				// encrypt the mocked response with client's public key
+				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+				Expect(err).To(BeNil())
+
+				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
+				Expect(err).To(BeNil())
+
+				serializedIdToken, err := encryptedIdToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				encryptedUserinfoToken, err := encrypter.Encrypt([]byte(userInfoToken))
+				Expect(err).To(BeNil())
+
+				serializedUserInfoToken, err := encryptedUserinfoToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+					} else if req.URL.Path == "/oidc/token" {
+						body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else if req.URL.Path == "/oidc/jwks.json" {
+						body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteWrongEncKeyMarshaled)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else if req.URL.Path == "/oidc/userinfo" {
+						return newMockResponse(http.StatusOK, headers, serializedUserInfoToken), nil
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusNotFound, headers, body), nil
+					}
+				})
+
+				client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				var userInfo user
+				oauth2Token := oauth2.Token{}
+				err = client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
+				Expect(err).To(BeNil())
+				Expect(userInfo.Name).To(Equal(userInfoClaims.Name))
+				Expect(userInfo.Subject).To(Equal(userInfoClaims.Subject))
+				Expect(userInfo.GivenName).To(Equal(userInfoClaims.GivenName))
+				Expect(userInfo.Locale).To(Equal(userInfoClaims.Locale))
+				Expect(userInfo.FamilyName).To(Equal(userInfoClaims.FamilyName))
+			})
+
+			It("fails when userinfo endpoint fails to return user info", func() {
+				now := time.Now().UTC()
+				in10mins := time.Now().UTC().Add(10 * time.Minute)
+				audience := []string{"exampleClientId"}
+				nonce := generateId()
+				idTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					Nonce:     nonce,
+				}
+
+				accessTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+				}
+
+				idToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+				Expect(err).To(BeNil())
+				accessToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				// encrypt the mocked response with client's public key
+				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+				Expect(err).To(BeNil())
+
+				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
+				Expect(err).To(BeNil())
+
+				serializedIdToken, err := encryptedIdToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					path := req.URL.Path
+					if path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+					} else if req.URL.Path == "/oidc/token" {
+						body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else if path == "/oidc/jwks.json" {
+						return newMockResponse(http.StatusOK, headers, remoteJwks), nil
+					} else if path == "/oidc/userinfo" {
+						body := `{"error": "internal server error"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					}
+				})
+
+				oauth2Token := oauth2.Token{}
+				client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				var userInfo user
+				err = client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("unable to fetch user info, received status: Internal Server Error"))
+			})
+
+			It("fails when userinfo response cannot be decrypted", func() {
+				now := time.Now().UTC()
+				in10mins := time.Now().UTC().Add(10 * time.Minute)
+				audience := []string{"exampleClientId"}
+				nonce := generateId()
+				idTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					Nonce:     nonce,
+				}
+
+				accessTokenClaims := jwtClaims{
+					Issuer:    "https://example.com/oidc",
+					Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+					Audience:  audience,
+					Expiry:    jwt.NewNumericDate(in10mins),
+					NotBefore: jwt.NewNumericDate(now),
+					IssuedAt:  jwt.NewNumericDate(now),
+					ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+				}
+
+				// TODO: add "ftn.idpId":"fi-op"
+				userInfoClaims := user{
+					Subject:    "IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+					Name:       "Väinö Tunnistus",
+					GivenName:  "Väinö",
+					Locale:     "FI",
+					SSN:        "123456-123A",
+					FamilyName: "Tunnistus",
+				}
+
+				remoteWrongEncKeyId = generateId()
+				remoteWrongEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				Expect(err).To(BeNil())
+				remoteWrongEncKeyJwk = &jose.JSONWebKey{
+					Key:          remoteWrongEncKey.Public(),
+					Certificates: []*x509.Certificate{},
+					KeyID:        remoteWrongEncKeyId,
+					Algorithm:    "RSA-OAEP",
+					Use:          "enc",
+				}
+
+				idToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+				Expect(err).To(BeNil())
+				accessToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
+				Expect(err).To(BeNil())
+
+				ctx := context.Background()
+				// encrypt the mocked response with client's public key
+				encrypter, err := newEncrypter(ctx, remoteWrongEncKeyJwk)
+				Expect(err).To(BeNil())
+
+				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
+				Expect(err).To(BeNil())
+
+				serializedIdToken, err := encryptedIdToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				userInfoToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, userInfoClaims)
+				Expect(err).To(BeNil())
+
+				// encrypt the mocked response with client's public key
+				wrongEncrypter, err := newEncrypter(ctx, remoteWrongEncKeyJwk)
+				Expect(err).To(BeNil())
+
+				encryptedUserinfoToken, err := wrongEncrypter.Encrypt([]byte(userInfoToken))
+				Expect(err).To(BeNil())
+
+				serializedUserInfoToken, err := encryptedUserinfoToken.CompactSerialize()
+				Expect(err).To(BeNil())
+
+				mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					path := req.URL.Path
+					if path == "/oidc/.well-known/openid-configuration" {
+						return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+					} else if req.URL.Path == "/oidc/token" {
+						body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+						return newMockResponse(http.StatusOK, headers, body), nil
+					} else if path == "/oidc/jwks.json" {
+						return newMockResponse(http.StatusOK, headers, remoteJwks), nil
+					} else if path == "/oidc/userinfo" {
+						return newMockResponse(http.StatusOK, headers, serializedUserInfoToken), nil
+					} else {
+						body := `{"error":"invalid path"}`
+						return newMockResponse(http.StatusInternalServerError, headers, body), nil
+					}
+				})
+
+				client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+				var userInfo user
+				oauth2Token := oauth2.Token{}
+				err = client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("unable to decrypt payload: square/go-jose: error in cryptographic primitive"))
+			})
+		})
 	})
 })
 
-func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims jwtClaims) (string, error) {
+func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims interface{}) (string, error) {
 	var signerOpts = jose.SignerOptions{}
 	signerOpts.WithType("JWT")
 	signerOpts.WithHeader("kid", keyId)
