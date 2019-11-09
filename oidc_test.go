@@ -1586,7 +1586,8 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			code := generateId()
 			tokens, err := client.Exchange(code, options)
 			Expect(err).To(BeNil())
-			Expect(tokens.Oauth2Token.Expiry.Unix()).To(Equal(accessTokenClaims.Expiry.Time().Unix()))
+			Expect(tokens.Oauth2Token.Expiry.UTC().Round(time.Second)).Should(
+				BeTemporally("~", accessTokenClaims.Expiry.Time().UTC().Round(time.Second), 1000))
 			Expect(tokens.Oauth2Token.TokenType).To(Equal("Bearer"))
 			Expect(tokens.Oauth2Token.RefreshToken).To(Equal("4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4"))
 			Expect(tokens.Oauth2Token.AccessToken).To(Equal(accessToken))
