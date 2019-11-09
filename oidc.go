@@ -370,23 +370,23 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 
 	req, err := http.NewRequest("GET", endpoints.UserInfoURL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("unbale to create userinfo request: %v", err)
 	}
 
 	token, err := tokenSource.Token()
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to get token: %v", err)
 	}
 	token.SetAuthHeader(req)
 
 	response, err := doRequest(o.ctx, req)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to execute request: %v", err)
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to read response body: %v", err)
 	}
 	defer response.Body.Close()
 	if !statusCodeIs2xx(response.StatusCode) {
@@ -395,7 +395,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 
 	webToken, err := jwt.ParseSignedAndEncrypted(string(body))
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to parse encrypted response: %v", err)
 	}
 
 	decryptedData, err := webToken.Decrypt(o.decryptionKey)
