@@ -2243,20 +2243,20 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 		Describe("UserInfo", func() {
 			var (
-				remoteSignKeyId            string
-				remoteSignKey              *rsa.PrivateKey
-				remoteSignKeyJwk           *jose.JSONWebKey
-				remoteSignKeyMarshaled     []byte
-				remoteWrongEncKeyId        string
-				remoteWrongEncKey          *rsa.PrivateKey
-				remoteWrongEncKeyJwk       *jose.JSONWebKey
-				remoteWrongEncKeyMarshaled []byte
-				localEncKeyId              string
-				localEncKey                *rsa.PrivateKey
-				localEncKeyJwk             *jose.JSONWebKey
-				localEncKeyPubJwk          *jose.JSONWebKey
-				localEncKeyMarshaled       []byte
-				err                        error
+				remoteSignKeyId        string
+				remoteSignKey          *rsa.PrivateKey
+				remoteSignKeyJwk       *jose.JSONWebKey
+				remoteSignKeyMarshaled []byte
+				remoteEncKeyId         string
+				remoteEncKey           *rsa.PrivateKey
+				remoteEncKeyJwk        *jose.JSONWebKey
+				remoteEncKeyMarshaled  []byte
+				localEncKeyId          string
+				localEncKey            *rsa.PrivateKey
+				localEncKeyJwk         *jose.JSONWebKey
+				localEncKeyPubJwk      *jose.JSONWebKey
+				localEncKeyMarshaled   []byte
+				err                    error
 			)
 
 			BeforeEach(func() {
@@ -2276,17 +2276,17 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(err).To(BeNil())
 
 				// Generate encryption key for the provider
-				remoteWrongEncKeyId = generateId()
-				remoteWrongEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				remoteEncKeyId = generateId()
+				remoteEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
 				Expect(err).To(BeNil())
-				remoteWrongEncKeyJwk = &jose.JSONWebKey{
-					Key:          remoteWrongEncKey.Public(),
+				remoteEncKeyJwk = &jose.JSONWebKey{
+					Key:          remoteEncKey.Public(),
 					Certificates: []*x509.Certificate{},
-					KeyID:        remoteWrongEncKeyId,
+					KeyID:        remoteEncKeyId,
 					Algorithm:    "RSA-OAEP",
 					Use:          "enc",
 				}
-				remoteWrongEncKeyMarshaled, err = remoteWrongEncKeyJwk.MarshalJSON()
+				remoteEncKeyMarshaled, err = remoteEncKeyJwk.MarshalJSON()
 				Expect(err).To(BeNil())
 
 				// Generate encryption key for the client
@@ -2401,7 +2401,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 								%s,
 								%s
 						]
-					}`, remoteSignKeyMarshaled, remoteWrongEncKeyMarshaled)
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
 						return newMockResponse(http.StatusOK, headers, body), nil
 					} else if req.URL.Path == "/oidc/userinfo" {
 						return newMockResponse(http.StatusOK, headers, serializedUserInfoToken), nil
@@ -2424,7 +2424,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(userInfo.FamilyName).To(Equal(userInfoClaims.FamilyName))
 			})
 
-			It("fails when userinfo endpoint fails to return user info", func() {
+			It("fails when userinfo endpoint responds with HTTP 500", func() {
 				now := time.Now().UTC()
 				in10mins := time.Now().UTC().Add(10 * time.Minute)
 				audience := []string{"exampleClientId"}
@@ -2537,10 +2537,10 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 					FamilyName: "Tunnistus",
 				}
 
-				remoteWrongEncKeyId = generateId()
-				remoteWrongEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+				remoteWrongEncKeyId := generateId()
+				remoteWrongEncKey, err := rsa.GenerateKey(rand.Reader, 2048)
 				Expect(err).To(BeNil())
-				remoteWrongEncKeyJwk = &jose.JSONWebKey{
+				remoteWrongEncKeyJwk := &jose.JSONWebKey{
 					Key:          remoteWrongEncKey.Public(),
 					Certificates: []*x509.Certificate{},
 					KeyID:        remoteWrongEncKeyId,
