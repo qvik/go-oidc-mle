@@ -2669,6 +2669,378 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			})
 		})
 	})
+
+	Describe("HandleCallback", func() {
+		var (
+			remoteSignKeyId         string
+			remoteSignKey           *rsa.PrivateKey
+			remoteSignKeyJwk        *jose.JSONWebKey
+			remoteSignKeyMarshaled  []byte
+			remoteEncKeyId          string
+			remoteEncKey            *rsa.PrivateKey
+			remoteEncKeyJwk         *jose.JSONWebKey
+			remoteEncKeyMarshaled   []byte
+			localEncKeyId           string
+			localEncKey             *rsa.PrivateKey
+			localEncKeyJwk          *jose.JSONWebKey
+			localEncKeyPubJwk       *jose.JSONWebKey
+			localEncKeyMarshaled    []byte
+			err                     error
+			nonce                   string
+			idTokenClaims           jwtClaims
+			accessTokenClaims       jwtClaims
+			now                     time.Time
+			in10mins                time.Time
+			audience                []string
+			idToken                 string
+			accessToken             string
+			ctx                     context.Context
+			encrypter               jose.Encrypter
+			encryptedIdToken        *jose.JSONWebEncryption
+			serializedIdToken       string
+			userInfoClaims          user
+			encryptedUserinfoToken  *jose.JSONWebEncryption
+			serializedUserInfoToken string
+		)
+
+		BeforeEach(func() {
+			// Generate signing key for the provider
+			remoteSignKeyId = generateId()
+			remoteSignKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
+			remoteSignKeyJwk = &jose.JSONWebKey{
+				Key:          remoteSignKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        remoteSignKeyId,
+				Algorithm:    "RS256",
+				Use:          "sig",
+			}
+			remoteSignKeyJwk.Certificates = nil
+			remoteSignKeyMarshaled, err = remoteSignKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			// Generate encryption key for the provider
+			remoteEncKeyId = generateId()
+			remoteEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
+			remoteEncKeyJwk = &jose.JSONWebKey{
+				Key:          remoteEncKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        remoteEncKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
+			remoteEncKeyMarshaled, err = remoteEncKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			// Generate encryption key for the client
+			localEncKeyId = generateId()
+			localEncKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).To(BeNil())
+			localEncKeyJwk = &jose.JSONWebKey{
+				Key:          localEncKey,
+				Certificates: []*x509.Certificate{},
+				KeyID:        localEncKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
+			localEncKeyPubJwk = &jose.JSONWebKey{
+				Key:          localEncKey.Public(),
+				Certificates: []*x509.Certificate{},
+				KeyID:        localEncKeyId,
+				Algorithm:    "RSA-OAEP",
+				Use:          "enc",
+			}
+			localEncKeyMarshaled, err = localEncKeyJwk.MarshalJSON()
+			Expect(err).To(BeNil())
+
+			now = time.Now().UTC()
+			in10mins = time.Now().UTC().Add(10 * time.Minute)
+			audience = []string{"exampleClientId"}
+			nonce = generateId()
+			idTokenClaims = jwtClaims{
+				Issuer:    "https://example.com/oidc",
+				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+				Audience:  audience,
+				Expiry:    jwt.NewNumericDate(in10mins),
+				NotBefore: jwt.NewNumericDate(now),
+				IssuedAt:  jwt.NewNumericDate(now),
+				Nonce:     nonce,
+			}
+
+			accessTokenClaims = jwtClaims{
+				Issuer:    "https://example.com/oidc",
+				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+				Audience:  audience,
+				Expiry:    jwt.NewNumericDate(in10mins),
+				NotBefore: jwt.NewNumericDate(now),
+				IssuedAt:  jwt.NewNumericDate(now),
+				ID:        "FysVEOhCTG2TJ84elHd5NL6d5XmYJv8-",
+			}
+
+			userInfoClaims = user{
+				Subject:    "IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+				Name:       "Väinö Tunnistus",
+				GivenName:  "Väinö",
+				Locale:     "FI",
+				SSN:        "123456-123A",
+				FamilyName: "Tunnistus",
+			}
+
+			idToken, err = buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+			Expect(err).To(BeNil())
+			accessToken, err = buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
+			Expect(err).To(BeNil())
+
+			ctx = context.Background()
+			encrypter, err = newEncrypter(ctx, localEncKeyPubJwk)
+			Expect(err).To(BeNil())
+
+			encryptedIdToken, err = encrypter.Encrypt([]byte(idToken))
+			Expect(err).To(BeNil())
+
+			serializedIdToken, err = encryptedIdToken.CompactSerialize()
+			Expect(err).To(BeNil())
+
+			userInfoToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, userInfoClaims)
+			Expect(err).To(BeNil())
+
+			encryptedUserinfoToken, err = encrypter.Encrypt([]byte(userInfoToken))
+			Expect(err).To(BeNil())
+
+			serializedUserInfoToken, err = encryptedUserinfoToken.CompactSerialize()
+			Expect(err).To(BeNil())
+
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+				} else if req.URL.Path == "/oidc/token" {
+					body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else if req.URL.Path == "/oidc/userinfo" {
+					return newMockResponse(http.StatusOK, headers, serializedUserInfoToken), nil
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusNotFound, headers, body), nil
+				}
+			})
+
+			config = Config{
+				ClientId:     "exampleClientId",
+				ClientSecret: "exampleClientSecret",
+				Endpoint:     "https://example.com/oidc",
+				RedirectUri:  "https://example.com/redirect",
+				LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+				Scopes:       []string{"profile", "signicat.national_id"},
+			}
+		})
+
+		It("successfully handles the callback", func() {
+			ctx := context.Background()
+			client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			var userInfo user
+			code := generateId()
+			state := generateId()
+			queryParams := url.Values{
+				"code":  {code},
+				"state": {state},
+			}
+			err = client.HandleCallback(state, nonce, queryParams, &userInfo)
+			Expect(err).To(BeNil())
+			Expect(userInfo.Name).To(Equal(userInfoClaims.Name))
+			Expect(userInfo.Subject).To(Equal(userInfoClaims.Subject))
+			Expect(userInfo.GivenName).To(Equal(userInfoClaims.GivenName))
+			Expect(userInfo.Locale).To(Equal(userInfoClaims.Locale))
+			Expect(userInfo.FamilyName).To(Equal(userInfoClaims.FamilyName))
+		})
+
+		It("fails if nonce does not match the one defined in authorization request", func() {
+			nonMatchingNonce := generateId()
+			idTokenClaims = jwtClaims{
+				Issuer:    "https://example.com/oidc",
+				Subject:   "-X-Q-1gmI-IlR-zh8gdsCNgAjRZ0ZjX9",
+				Audience:  []string{"exampleClientId"},
+				Expiry:    jwt.NewNumericDate(in10mins),
+				NotBefore: jwt.NewNumericDate(now),
+				IssuedAt:  jwt.NewNumericDate(now),
+				Nonce:     nonMatchingNonce,
+			}
+
+			idToken, err = buildSignedJWTToken(remoteSignKey, remoteSignKeyId, idTokenClaims)
+			Expect(err).To(BeNil())
+			encryptedIdToken, err = encrypter.Encrypt([]byte(idToken))
+			Expect(err).To(BeNil())
+			serializedIdToken, err = encryptedIdToken.CompactSerialize()
+			Expect(err).To(BeNil())
+
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+				} else if req.URL.Path == "/oidc/token" {
+					body := fmt.Sprintf(`{
+						"access_token":"%s",
+						"token_type":"Bearer",
+						"refresh_token":"4DrsxnobxT09oQ4r0JiAhuEXWvnfLdh4",
+						"scope":"openid profile",
+						"expires_in":600,
+						"id_token":"%s"
+					}`, accessToken, serializedIdToken)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
+				}
+			})
+
+			ctx := context.Background()
+			client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			var userInfo user
+			code := generateId()
+			state := generateId()
+			nonce := generateId()
+			queryParams := url.Values{
+				"code":  {code},
+				"state": {state},
+			}
+			err = client.HandleCallback(state, nonce, queryParams, &userInfo)
+			Expect(userInfo).To(Equal(user{}))
+			Expect(err).NotTo(BeNil())
+			expectedErr := fmt.Sprintf("nonce is not the one specified. expected '%s', got '%s'", nonce, nonMatchingNonce)
+			Expect(err.Error()).To(Equal(expectedErr))
+		})
+
+		It("fails when userinfo endpoint fails to return user info", func() {
+			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+				if req.URL.Path == "/oidc/.well-known/openid-configuration" {
+					return newMockResponse(http.StatusOK, headers, openidConfiguration), nil
+				} else if req.URL.Path == "/oidc/token" {
+					body := `{"error": "internal server error"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
+				} else if req.URL.Path == "/oidc/jwks.json" {
+					body := fmt.Sprintf(`{
+							"keys":[
+								%s,
+								%s
+						]
+					}`, remoteSignKeyMarshaled, remoteEncKeyMarshaled)
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else if req.URL.Path == "/oidc/userinfo" {
+					body := `{
+						"sub":"IY1kAqvxOLMOZBDGuMpG6lcTAi_qJihr",
+						"name":"Väinö Tunnistus",
+						"given_name":"Väinö",
+						"locale":"FI",
+						"signicat.national_id": "123456-123A",
+						"ftn.idpId":"fi-op",
+						"family_name":"Tunnistus"
+					}`
+					return newMockResponse(http.StatusOK, headers, body), nil
+				} else {
+					body := `{"error":"invalid path"}`
+					return newMockResponse(http.StatusInternalServerError, headers, body), nil
+				}
+			})
+			ctx := context.Background()
+			client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			code := generateId()
+			var userInfo user
+			state := generateId()
+			queryParams := url.Values{
+				"code":  {code},
+				"state": {state},
+			}
+			err = client.HandleCallback(state, "", queryParams, userInfo)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("unable to exchange authorization code to token"))
+		})
+
+		It("fails when query params contain error parameter", func() {
+			ctx := context.Background()
+			client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			var userInfo user
+			state := generateId()
+			authErr := "process failed"
+			authErrDesc := "user cancelled the authorization process"
+			queryParams := url.Values{
+				"error":             {authErr},
+				"error_description": {authErrDesc},
+				"state":             {state},
+			}
+			expectedError := fmt.Sprintf("authorization failed. error: %s, description: %s", authErr, authErrDesc)
+			err = client.HandleCallback(state, "", queryParams, userInfo)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal(expectedError))
+		})
+
+		It("fails when the state does not match", func() {
+			ctx := context.Background()
+			client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			var userInfo user
+			state := generateId()
+			state2 := generateId()
+			code := generateId()
+			queryParams := url.Values{
+				"code":  {code},
+				"state": {state},
+			}
+			expectedError := "received state does not match the defined state"
+			err = client.HandleCallback(state2, "", queryParams, userInfo)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal(expectedError))
+		})
+
+		It("fails when authorization code is missing", func() {
+			ctx := context.Background()
+			client := Must(NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			var userInfo user
+			state := generateId()
+			queryParams := url.Values{
+				"state": {state},
+			}
+			expectedError := "authorization code missing"
+			err = client.HandleCallback(state, "", queryParams, userInfo)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal(expectedError))
+		})
+	})
 })
 
 func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims interface{}) (string, error) {

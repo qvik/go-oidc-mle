@@ -425,7 +425,7 @@ func (o *OIDCClientEncrypted) HandleCallback(state, nonce string, queryParams ur
 	}
 
 	if queryParams.Get("state") != state {
-		return errors.New("state does not match")
+		return errors.New("received state does not match the defined state")
 	}
 
 	code := queryParams.Get("code")
