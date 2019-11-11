@@ -1,4 +1,4 @@
-module github.com/haaja/go-oidc-mle
+module github.com/qvik/go-oidc-mle
 
 go 1.13
 
