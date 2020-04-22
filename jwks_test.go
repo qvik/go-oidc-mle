@@ -327,9 +327,10 @@ var _ = Describe("Jwks tests", func() {
 		It("fails when request cannot be created", func() {
 			invalidUri := string([]byte{0x7f})
 			jwks, expiry, err := updateKeys(nil, invalidUri)
-
-			expectedError := "unable to create request: parse \u007f: net/url: invalid control character in URL"
+			invalidCharacter := "\u007f"
+			expectedError := fmt.Sprintf("unable to create request: parse %q: net/url: invalid control character in URL", invalidCharacter)
 			Expect(jwks).To(BeNil())
+			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
 			Expect(err.Error()).To(Equal(expectedError))
 		})
@@ -343,8 +344,9 @@ var _ = Describe("Jwks tests", func() {
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
-			expectedError := "unable to fetch keys Get https://example.com/oidc/jwks.json: request failed"
+			expectedError := "unable to fetch keys Get \"https://example.com/oidc/jwks.json\": request failed"
 			Expect(jwks).To(BeNil())
+			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
 			Expect(err.Error()).To(Equal(expectedError))
 		})
@@ -364,6 +366,7 @@ var _ = Describe("Jwks tests", func() {
 
 			expectedError := fmt.Sprintf("unable to get keys: %s %s", http.StatusText(http.StatusInternalServerError), body)
 			Expect(jwks).To(BeNil())
+			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
 			Expect(err.Error()).To(Equal(expectedError))
 		})
@@ -409,6 +412,7 @@ var _ = Describe("Jwks tests", func() {
 
 			expectedError := `unable to parse response cache headers: strconv.ParseUint: parsing "INVALID": invalid syntax`
 			Expect(jwks).To(BeNil())
+			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
 			Expect(err.Error()).To(Equal(expectedError))
 		})

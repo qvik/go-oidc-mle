@@ -2566,7 +2566,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				oauth2Token := oauth2.Token{}
 				err = client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(Equal("unable to execute request: Get https://example.com/oidc/userinfo: request failed"))
+				Expect(err.Error()).To(Equal("unable to execute request: Get \"https://example.com/oidc/userinfo\": request failed"))
 			})
 
 			It("fails when userinfo response JWT cannot be parsed", func() {
