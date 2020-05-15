@@ -28,10 +28,9 @@ type RemoteKeyStore struct {
 // Returns a key from RemoteKeyStore by use. If the keystore contains
 // multiple keys with same use then first key will be returned.
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
-	now := time.Now().UTC()
-	if now.After(r.Expiry) {
-		r.mutex.Lock()
-		defer r.mutex.Unlock()
+	// Lets refresh the keys if cached keys expire within the next 10 minutes
+	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
+	if tenMinutesFromNow.After(r.Expiry.Add(-1 * time.Second)) {
 		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
 		if err != nil {
 			return nil, err
@@ -52,8 +51,9 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 // Returns a key from RemoteKeyStore by key id. If the RemoteKeyStore
 // contains multiple keys with same id then first matching key is returned.
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
-	now := time.Now().UTC()
-	if now.After(r.Expiry) {
+	// Lets refresh the keys if cached keys expire within the next 10 minutes
+	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
+	if tenMinutesFromNow.After(r.Expiry) {
 		err := r.updateKeys()
 		if err != nil {
 			return nil, err
