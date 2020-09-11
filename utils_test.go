@@ -132,9 +132,15 @@ var _ = Describe("utils tests", func() {
 				ExtraHeaders: nil,
 			}
 			expectedOptions.WithType("JWE")
-			expectedOptions.WithHeader(jose.HeaderContentType, "JWT")
 			ctx := context.Background()
-			encrypter, err := newEncrypter(ctx, encKeyJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(encKeyJwk.Algorithm)
+			options := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			options.WithType("JWE")
+			encrypter, err := newEncrypter(ctx, encKeyJwk, enc, alg, options)
 			Expect(err).To(BeNil())
 			Expect(encrypter.Options().Compression).To(Equal(expectedOptions.Compression))
 			Expect(encrypter.Options().ExtraHeaders).To(Equal(expectedOptions.ExtraHeaders))
@@ -157,7 +163,14 @@ var _ = Describe("utils tests", func() {
 			}
 			ctx := context.Background()
 			ctxWithEncrypter := context.WithValue(ctx, EncrypterContextKey, mock)
-			encrypter, err := newEncrypter(ctxWithEncrypter, encKeyJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(encKeyJwk.Algorithm)
+			options := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			options.WithType("JWE")
+			encrypter, err := newEncrypter(ctxWithEncrypter, encKeyJwk, enc, alg, options)
 			Expect(err).To(BeNil())
 			Expect(encrypter.Options().Compression).To(Equal(expectedOptions.Compression))
 			Expect(encrypter.Options().ExtraHeaders).To(Equal(expectedOptions.ExtraHeaders))
@@ -166,7 +179,14 @@ var _ = Describe("utils tests", func() {
 		It("fails to create encrypter if the key is invalid", func() {
 			encKeyJwk.Algorithm = "INVALID"
 			ctx := context.Background()
-			_, err := newEncrypter(ctx, encKeyJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(encKeyJwk.Algorithm)
+			options := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			options.WithType("JWE")
+			_, err := newEncrypter(ctx, encKeyJwk, enc, alg, options)
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("square/go-jose: unknown/unsupported algorithm"))
 		})

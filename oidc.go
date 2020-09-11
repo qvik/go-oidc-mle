@@ -277,7 +277,16 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]strin
 	if err != nil {
 		return "", err
 	}
-	encrypter, err := newEncrypter(o.ctx, encryptionKey)
+
+	// TODO: take encryption algorithm from openid-configuration
+	enc := jose.ContentEncryption("A256CBC-HS512")
+	alg := jose.KeyAlgorithm(encryptionKey.Algorithm)
+	options := jose.EncrypterOptions{
+		Compression:  "",
+		ExtraHeaders: nil,
+	}
+	options.WithType("JWE")
+	encrypter, err := newEncrypter(o.ctx, encryptionKey, enc, alg, options)
 	if err != nil {
 		return "", err
 	}

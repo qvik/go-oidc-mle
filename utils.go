@@ -41,17 +41,7 @@ func (m *mockEncrypter) Options() jose.EncrypterOptions {
 }
 
 // newEncrypted is a convenience method for creating a jose.Encrypter using a specified JWK.
-func newEncrypter(ctx context.Context, key *jose.JSONWebKey) (jose.Encrypter, error) {
-	// TODO(janne): the encryption algorithm should be taken from the oidc-configuration
-	enc := jose.ContentEncryption("A256CBC-HS512")
-	alg := jose.KeyAlgorithm(key.Algorithm)
-	options := jose.EncrypterOptions{
-		Compression:  "",
-		ExtraHeaders: nil,
-	}
-	options.WithType("JWE")
-	options.WithHeader(jose.HeaderContentType, "JWT")
-
+func newEncrypter(ctx context.Context, key *jose.JSONWebKey, enc jose.ContentEncryption, alg jose.KeyAlgorithm, options jose.EncrypterOptions) (jose.Encrypter, error) {
 	encrypter, err := jose.NewEncrypter(enc, jose.Recipient{
 		Algorithm: alg,
 		Key:       key,

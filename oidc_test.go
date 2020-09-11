@@ -1539,7 +1539,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err).To(BeNil())
 
 			// encrypt the mocked response with client's public key
-			encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+			encrypterOptions := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			encrypterOptions.WithType("JWE")
+			encrypter, err := newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 			Expect(err).To(BeNil())
 
 			encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
@@ -1727,7 +1734,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err).To(BeNil())
 
 			// encrypt the mocked response with client's public key
-			encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+			encrypterOptions := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			encrypterOptions.WithType("JWE")
+			encrypter, err := newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 			Expect(err).To(BeNil())
 
 			encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
@@ -1812,7 +1826,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err).To(BeNil())
 
 			// use wrong key to encrypt the response
-			encrypter, err := newEncrypter(ctx, remoteEncKeyJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(remoteEncKeyJwk.Algorithm)
+			encrypterOptions := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			encrypterOptions.WithType("JWE")
+			encrypter, err := newEncrypter(ctx, remoteEncKeyJwk, enc, alg, encrypterOptions)
 			Expect(err).To(BeNil())
 
 			encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
@@ -1896,7 +1917,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			accessToken, err := buildSignedJWTToken(remoteSignKey, remoteSignKeyId, accessTokenClaims)
 			Expect(err).To(BeNil())
 
-			encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+			encrypterOptions := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			encrypterOptions.WithType("JWE")
+			encrypter, err := newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 			Expect(err).To(BeNil())
 
 			encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
@@ -2058,7 +2086,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(err).To(BeNil())
 
 				// encrypt the mocked response with client's public key
-				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+				enc := jose.ContentEncryption("A256CBC-HS512")
+				alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+				encrypterOptions := jose.EncrypterOptions{
+					Compression:  "",
+					ExtraHeaders: nil,
+				}
+				encrypterOptions.WithType("JWE")
+				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 				Expect(err).To(BeNil())
 
 				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
@@ -2150,7 +2185,14 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(err).To(BeNil())
 
 				// encrypt the mocked response with client's public key
-				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk)
+				enc := jose.ContentEncryption("A256CBC-HS512")
+				alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+				encrypterOptions := jose.EncrypterOptions{
+					Compression:  "",
+					ExtraHeaders: nil,
+				}
+				encrypterOptions.WithType("JWE")
+				encrypter, err := newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 				Expect(err).To(BeNil())
 
 				encryptedIdToken, err := encrypter.Encrypt([]byte(idToken))
@@ -2366,7 +2408,15 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(err).To(BeNil())
 
 				ctx = context.Background()
-				encrypter, err = newEncrypter(ctx, localEncKeyPubJwk)
+				enc := jose.ContentEncryption("A256CBC-HS512")
+				alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+				encrypterOptions := jose.EncrypterOptions{
+					Compression:  "",
+					ExtraHeaders: nil,
+				}
+				encrypterOptions.WithType("JWE")
+				encrypterOptions.WithContentType("JWT")
+				encrypter, err = newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 				Expect(err).To(BeNil())
 
 				encryptedIdToken, err = encrypter.Encrypt([]byte(idToken))
@@ -2494,7 +2544,15 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(err).To(BeNil())
 
 				// encrypt the mocked response with client's public key
-				wrongEncrypter, err := newEncrypter(ctx, remoteWrongEncKeyJwk)
+				enc := jose.ContentEncryption("A256CBC-HS512")
+				alg := jose.KeyAlgorithm(remoteWrongEncKeyJwk.Algorithm)
+				encrypterOptions := jose.EncrypterOptions{
+					Compression:  "",
+					ExtraHeaders: nil,
+				}
+				encrypterOptions.WithType("JWE")
+				encrypterOptions.WithContentType("JWT")
+				wrongEncrypter, err := newEncrypter(ctx, remoteWrongEncKeyJwk, enc, alg, encrypterOptions)
 				Expect(err).To(BeNil())
 
 				encryptedUserinfoToken, err := wrongEncrypter.Encrypt([]byte(userInfoToken))
@@ -2793,7 +2851,15 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			Expect(err).To(BeNil())
 
 			ctx = context.Background()
-			encrypter, err = newEncrypter(ctx, localEncKeyPubJwk)
+			enc := jose.ContentEncryption("A256CBC-HS512")
+			alg := jose.KeyAlgorithm(localEncKeyPubJwk.Algorithm)
+			encrypterOptions := jose.EncrypterOptions{
+				Compression:  "",
+				ExtraHeaders: nil,
+			}
+			encrypterOptions.WithType("JWE")
+			encrypterOptions.WithContentType("JWT")
+			encrypter, err = newEncrypter(ctx, localEncKeyPubJwk, enc, alg, encrypterOptions)
 			Expect(err).To(BeNil())
 
 			encryptedIdToken, err = encrypter.Encrypt([]byte(idToken))
