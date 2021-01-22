@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
