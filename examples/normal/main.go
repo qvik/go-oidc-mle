@@ -58,7 +58,7 @@ func main() {
 	http.HandleFunc("/auth/", func(w http.ResponseWriter, r *http.Request) {
 		method := strings.Replace(r.URL.Path, "/auth/", "", 1)
 
-		opts := map[string]string{
+		opts := map[string]interface{}{
 			"acr_values": fmt.Sprintf("urn:signicat:oidc:method:%s", method),
 			"ui_locales": "fi",
 			"nonce":      nonce,
