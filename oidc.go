@@ -52,6 +52,7 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 	oidcConfig := &oidc.Config{
 		ClientID: config.ClientId,
 	}
+
 	oauth2Config := oauth2.Config{
 		ClientID:     config.ClientId,
 		ClientSecret: config.ClientSecret,
@@ -177,8 +178,17 @@ func (o *OIDCClient) ExchangeWithNonce(code, nonce string, options map[string]st
 func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}) (string, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
-		opts = append(opts, oauth2.SetAuthURLParam(key, value.(string)))
+		switch valueType := value.(type) {
+		case []string:
+			list := strings.Join(value.([]string), " ")
+			opts = append(opts, oauth2.SetAuthURLParam(key, list))
+		case string:
+			opts = append(opts, oauth2.SetAuthURLParam(key, value.(string)))
+		default:
+			return "", errors.New(fmt.Sprintf("unknown request option type: '%T'", valueType))
+		}
 	}
+
 	return o.oauth2Config.AuthCodeURL(state, opts...), nil
 }
 

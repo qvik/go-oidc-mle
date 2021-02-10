@@ -236,6 +236,32 @@ var _ = Describe("OIDCClient tests", func() {
 			Expect(parsedUrl.Query().Get("client_id")).To(Equal(config.ClientId))
 			Expect(parsedUrl.Path).To(Equal("/oidc/authorize"))
 		})
+
+		It("returns authorization request url with complex parameters", func() {
+			state := generateId()
+			options := map[string]interface{}{
+				"acr_values": "urn:signicat:oidc:method:ftn-op-auth",
+				"ui_locales": "fi",
+				"login_hints": []string{"birthday-121212", "phoneno-nnnnnnnn"},
+			}
+			ctx := context.Background()
+			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			authUrl, err := client.AuthRequestURL(state, options)
+			Expect(err).To(BeNil())
+			
+			parsedUrl, err := url.Parse(authUrl)
+			Expect(err).To(BeNil())
+
+			Expect(parsedUrl.Query().Get("redirect_uri")).To(Equal(config.RedirectUri))
+			Expect(parsedUrl.Query().Get("state")).To(Equal(state))
+			Expect(parsedUrl.Query().Get("response_type")).To(Equal("code"))
+			Expect(parsedUrl.Query().Get("scope")).To(Equal(strings.Join(config.Scopes, " ")))
+			Expect(parsedUrl.Query().Get("acr_values")).To(Equal(options["acr_values"]))
+			Expect(parsedUrl.Query().Get("ui_locales")).To(Equal(options["ui_locales"]))
+			Expect(parsedUrl.Query().Get("client_id")).To(Equal(config.ClientId))
+			Expect(parsedUrl.Path).To(Equal("/oidc/authorize"))
+		})
 	})
 
 	Describe("Exchange", func() {
