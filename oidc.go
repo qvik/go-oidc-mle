@@ -22,7 +22,7 @@ import (
 type OIDCInterface interface {
 	Exchange(string, map[string]string) (*Tokens, error)
 	ExchangeWithNonce(string, string, map[string]string) (*Tokens, error)
-	AuthRequestURL(string, map[string]string) (string, error)
+	AuthRequestURL(string, map[string]interface{}) (string, error)
 	Verify(string) (*oidc.IDToken, error)
 	UserInfo(oauth2.TokenSource, interface{}) error
 	HandleCallback(string, string, url.Values, interface{}) error
@@ -52,6 +52,7 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 	oidcConfig := &oidc.Config{
 		ClientID: config.ClientId,
 	}
+
 	oauth2Config := oauth2.Config{
 		ClientID:     config.ClientId,
 		ClientSecret: config.ClientSecret,
@@ -174,11 +175,20 @@ func (o *OIDCClient) ExchangeWithNonce(code, nonce string, options map[string]st
 }
 
 // Returns the URL for authorization request.
-func (o *OIDCClient) AuthRequestURL(state string, options map[string]string) (string, error) {
+func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}) (string, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
-		opts = append(opts, oauth2.SetAuthURLParam(key, value))
+		switch valueType := value.(type) {
+		case []string:
+			list := strings.Join(value.([]string), " ")
+			opts = append(opts, oauth2.SetAuthURLParam(key, list))
+		case string:
+			opts = append(opts, oauth2.SetAuthURLParam(key, value.(string)))
+		default:
+			return "", errors.New(fmt.Sprintf("unknown request option type: '%T'", valueType))
+		}
 	}
+
 	return o.oauth2Config.AuthCodeURL(state, opts...), nil
 }
 
@@ -254,7 +264,7 @@ type OIDCClientEncrypted struct {
 }
 
 // Returns the authorization request URL with encrypted request object.
-func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]string) (string, error) {
+func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]interface{}) (string, error) {
 	mandatoryParams := map[string]string{
 		"response_type": "code",
 		"client_id":     o.oauth2Config.ClientID,
