@@ -240,8 +240,8 @@ var _ = Describe("OIDCClient tests", func() {
 		It("returns authorization request url with complex parameters", func() {
 			state := generateId()
 			options := map[string]interface{}{
-				"acr_values": "urn:signicat:oidc:method:ftn-op-auth",
-				"ui_locales": "fi",
+				"acr_values":  "urn:signicat:oidc:method:ftn-op-auth",
+				"ui_locales":  "fi",
 				"login_hints": []string{"birthday-121212", "phoneno-nnnnnnnn"},
 			}
 			ctx := context.Background()
@@ -249,7 +249,7 @@ var _ = Describe("OIDCClient tests", func() {
 
 			authUrl, err := client.AuthRequestURL(state, options)
 			Expect(err).To(BeNil())
-			
+
 			parsedUrl, err := url.Parse(authUrl)
 			Expect(err).To(BeNil())
 
