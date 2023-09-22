@@ -22,14 +22,14 @@ type mockEncrypter struct {
 	error      error
 }
 
-func (m *mockEncrypter) Encrypt(plaintext []byte) (*jose.JSONWebEncryption, error) {
+func (m *mockEncrypter) Encrypt(_ []byte) (*jose.JSONWebEncryption, error) {
 	if m.error != nil {
 		return nil, m.error
 	}
 	return &m.encryption, nil
 }
 
-func (m *mockEncrypter) EncryptWithAuthData(plaintext []byte, aad []byte) (*jose.JSONWebEncryption, error) {
+func (m *mockEncrypter) EncryptWithAuthData(_ []byte, _ []byte) (*jose.JSONWebEncryption, error) {
 	if m.error != nil {
 		return nil, m.error
 	}
