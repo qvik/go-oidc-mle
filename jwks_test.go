@@ -158,7 +158,7 @@ var _ = Describe("Jwks tests", func() {
 				Expect(remoteKeys.Expiry).Should(BeTemporally(">=", now.Add(59*time.Minute+59*time.Second)))
 
 				// Second call
-				actualSignKey, err = remoteKeys.ByUse("sig")
+				_, err = remoteKeys.ByUse("sig")
 				Expect(err).To(BeNil())
 				Expect(remoteKeys.Expiry).Should(Equal(origExpiry))
 				Expect(numberOfCalls).To(Equal(1))
