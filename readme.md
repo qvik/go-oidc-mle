@@ -66,7 +66,7 @@ log.Printf("Authorization URL: %s\n", url)
 
 The next step is to redirect the user to the authorization url. Once the user has completed the authorization process, the service provider will redirect the customer to the redirect_uri that was specified as part of the config.
 
-In the redirect uri handler the request should be validated. Namely error and error_description query parameters should not be present. In addition, the state should match to the one specified as part of the authorization request. If nonce was specified as part of the authorization request, the id_token should contain the same nonce unmodified. If everything checks out you can proceed to exchanging the authorization code for token. Go-oidc-mle provides a convenience method HandleCallback which validates the request, nonce and state. Alternatively you can do the same manually.
+In the redirect uri handler the request should be validated. Namely, error and error_description query parameters should not be present. In addition, the state should match to the one specified as part of the authorization request. If nonce was specified as part of the authorization request, the id_token should contain the same nonce unmodified. If everything checks out you can proceed to exchanging the authorization code for token. Go-oidc-mle provides a convenience method HandleCallback which validates the request, nonce and state. Alternatively you can do the same manually.
 
 Define a type for the data you're expecting to receive from the user info endpoint of the service provider. The content depends on the scope that you specified. Once again the example below is for the scope that we specified in the config for Signicat.
 ```go
