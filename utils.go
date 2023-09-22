@@ -56,7 +56,7 @@ func newEncrypter(ctx context.Context, key *jose.JSONWebKey, enc jose.ContentEnc
 	return encrypter, nil
 }
 
-// Checks if the status code is between 200 and 299 range inclusive.
+// statusCodeIs2xx checks if the status code is between 200 and 299 range inclusive.
 func statusCodeIs2xx(statusCode int) bool {
 	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
 		return false
@@ -64,7 +64,7 @@ func statusCodeIs2xx(statusCode int) bool {
 	return true
 }
 
-// Adds "openid" to the scope if not present
+// addOpenIdToScope adds "openid" to the scope if not present
 func addOpenIdToScope(scope []string) []string {
 	for _, value := range scope {
 		if value == scopeOpenID {

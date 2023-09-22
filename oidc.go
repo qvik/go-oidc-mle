@@ -135,7 +135,7 @@ type OIDCClient struct {
 	ctx          context.Context
 }
 
-// Exchanges the authorization code to a token.
+// Exchange exchanges the authorization code to a token.
 func (o *OIDCClient) Exchange(code string, options map[string]string) (*Tokens, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
@@ -160,7 +160,7 @@ func (o *OIDCClient) Exchange(code string, options map[string]string) (*Tokens, 
 	}, nil
 }
 
-// Exchanges the authorization code to a token and verifies the nonce
+// ExchangeWithNonce exchanges the authorization code to a token and verifies the nonce
 func (o *OIDCClient) ExchangeWithNonce(code, nonce string, options map[string]string) (*Tokens, error) {
 	tokens, err := o.Exchange(code, options)
 	if err != nil {
@@ -174,7 +174,7 @@ func (o *OIDCClient) ExchangeWithNonce(code, nonce string, options map[string]st
 	return tokens, nil
 }
 
-// Returns the URL for authorization request.
+// AuthRequestURL returns the URL for authorization request.
 func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}) (string, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
@@ -192,13 +192,13 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}
 	return o.oauth2Config.AuthCodeURL(state, opts...), nil
 }
 
-// Verifies the signature of the token. Note that the possible nonce in
+// Verify verifies the signature of the token. Note that the possible nonce in
 func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
 }
 
-// Fetches user information from provider's user info endpoint.
+// UserInfo fetches user information from provider's user info endpoint.
 func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
 	userInfo, err := o.provider.UserInfo(o.ctx, token)
 	if err != nil {
@@ -263,7 +263,7 @@ type OIDCClientEncrypted struct {
 	ctx           context.Context
 }
 
-// Returns the authorization request URL with encrypted request object.
+// AuthRequestURL returns the authorization request URL with encrypted request object.
 func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]interface{}) (string, error) {
 	mandatoryParams := map[string]string{
 		"response_type": "code",
@@ -315,13 +315,13 @@ func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]inter
 	return authRequestURL, nil
 }
 
-// Verifies the signature of a token.
+// Verify verifies the signature of a token.
 func (o *OIDCClientEncrypted) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
 }
 
-// Exchanges the authorization code to a token.
+// Exchange exchanges the authorization code to a token.
 func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (*Tokens, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
@@ -358,7 +358,7 @@ func (o *OIDCClientEncrypted) Exchange(code string, options map[string]string) (
 	}, nil
 }
 
-// Exchanges the authorization code to a token and verifies nonce
+// ExchangeWithNonce Exchanges the authorization code to a token and verifies nonce
 func (o *OIDCClientEncrypted) ExchangeWithNonce(code, nonce string, options map[string]string) (*Tokens, error) {
 	tokens, err := o.Exchange(code, options)
 	if err != nil {
@@ -379,7 +379,7 @@ type providerEndpoints struct {
 	UserInfoURL string `json:"userinfo_endpoint"`
 }
 
-// Fetches user information from provider's user info endpoint.
+// UserInfo fetches user information from provider's user info endpoint.
 func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destination interface{}) error {
 	var endpoints providerEndpoints
 	err := o.provider.Claims(&endpoints)

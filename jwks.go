@@ -15,7 +15,7 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-// Stores OIDC provider's JWKs and caches them for the duration specified in
+// RemoteKeyStore Stores OIDC provider's JWKs and caches them for the duration specified in
 // the cache-control header. Keys will be refreshed upon expiry.
 type RemoteKeyStore struct {
 	jose.JSONWebKeySet
@@ -25,10 +25,10 @@ type RemoteKeyStore struct {
 	mutex   sync.Mutex
 }
 
-// Returns a key from RemoteKeyStore by use. If the keystore contains
+// ByUse returns a key from RemoteKeyStore by use. If the keystore contains
 // multiple keys with same use then first key will be returned.
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
-	// Lets refresh the keys if cached keys expire within the next 10 minutes
+	// Let's refresh the keys if cached keys expire within the next 10 minutes
 	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
 	if tenMinutesFromNow.After(r.Expiry.Add(-1 * time.Second)) {
 		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
@@ -48,10 +48,10 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("key not found")
 }
 
-// Returns a key from RemoteKeyStore by key id. If the RemoteKeyStore
+// ById returns a key from RemoteKeyStore by key id. If the RemoteKeyStore
 // contains multiple keys with same id then first matching key is returned.
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
-	// Lets refresh the keys if cached keys expire within the next 10 minutes
+	// Let's refresh the keys if cached keys expire within the next 10 minutes
 	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
 	if tenMinutesFromNow.After(r.Expiry) {
 		err := r.updateKeys()
