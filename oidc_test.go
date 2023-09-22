@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -36,7 +36,7 @@ func newMockClient(fn MockRoundTrip) *http.Client {
 
 func newMockResponse(statusCode int, headers http.Header, body string) *http.Response {
 	b := bytes.NewBufferString(body)
-	mockBody := ioutil.NopCloser(b)
+	mockBody := io.NopCloser(b)
 	return &http.Response{
 		Status:        http.StatusText(statusCode),
 		StatusCode:    statusCode,
@@ -2268,7 +2268,6 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal(fmt.Sprintf("nonce is not the one specified. expected '%s', got '%s'", nonce, idTokenClaims.Nonce)))
 				Expect(tokens).To(BeNil())
-
 			})
 
 			It("fails to exchange when provider's token endpoint returns an error", func() {
@@ -3136,7 +3135,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 })
 
 func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims interface{}) (string, error) {
-	var signerOpts = jose.SignerOptions{}
+	signerOpts := jose.SignerOptions{}
 	signerOpts.WithType("JWT")
 	signerOpts.WithHeader("kid", keyId)
 
