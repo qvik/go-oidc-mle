@@ -326,7 +326,7 @@ var _ = Describe("Jwks tests", func() {
 
 		It("fails when request cannot be created", func() {
 			invalidUri := string([]byte{0x7f})
-			jwks, expiry, err := updateKeys(nil, invalidUri)
+			jwks, expiry, err := updateKeys(context.TODO(), invalidUri)
 			invalidCharacter := "\u007f"
 			expectedError := fmt.Sprintf("unable to create request: parse %q: net/url: invalid control character in URL", invalidCharacter)
 			Expect(jwks).To(BeNil())
