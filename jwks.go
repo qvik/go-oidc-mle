@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-jose/go-jose/v3"
 	"github.com/pquerna/cachecontrol"
 	"golang.org/x/oauth2"
-	"gopkg.in/square/go-jose.v2"
 )
 
 // RemoteKeyStore Stores OIDC provider's JWKs and caches them for the duration specified in

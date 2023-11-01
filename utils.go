@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"gopkg.in/square/go-jose.v2"
+	"github.com/go-jose/go-jose/v3"
 )
 
 const EncrypterContextKey string = "EncrypterContextKey"

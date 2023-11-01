@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-jose/go-jose/v3"
 	"golang.org/x/oauth2"
-	"gopkg.in/square/go-jose.v2"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

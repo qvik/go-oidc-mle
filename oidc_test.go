@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v3"
+	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/gofrs/uuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
-	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 type MockRoundTrip func(request *http.Request) (*http.Response, error)
@@ -1182,7 +1182,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
 
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("square/go-jose: unknown json web key type 'INVALID_TYPE'"))
+			Expect(err.Error()).To(Equal("go-jose/go-jose: unknown json web key type 'INVALID_TYPE'"))
 			Expect(client).To(BeNil())
 		})
 
@@ -1226,7 +1226,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			client, err := NewClientMLE(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config)
 
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("unable to unmarshal keys: square/go-jose: unknown json web key type 'RSA1'"))
+			Expect(err.Error()).To(Equal("unable to unmarshal keys: go-jose/go-jose: unknown json web key type 'RSA1'"))
 			Expect(client).To(BeNil())
 		})
 	})
@@ -1412,7 +1412,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			url, err := client.AuthRequestURL(state, opts)
 			Expect(url).To(BeEmpty())
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("square/go-jose: unknown/unsupported algorithm"))
+			Expect(err.Error()).To(Equal("go-jose/go-jose: unknown/unsupported algorithm"))
 		})
 
 		It("fails when encrypter.Encrypter fails", func() {
@@ -2619,7 +2619,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				oauth2Token := oauth2.Token{}
 				err = client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(Equal("unable to decrypt payload: square/go-jose: error in cryptographic primitive"))
+				Expect(err.Error()).To(Equal("unable to decrypt payload: go-jose/go-jose: error in cryptographic primitive"))
 			})
 
 			It("fails when request to userinfo endpoint fails", func() {
@@ -2710,7 +2710,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				oauth2Token := oauth2.Token{}
 				err = client.UserInfo(oauth2.StaticTokenSource(&oauth2Token), &userInfo)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(Equal("unable to parse encrypted response: square/go-jose/jwt: expected content type to be JWT (cty header)"))
+				Expect(err.Error()).To(Equal("unable to parse encrypted response: go-jose/go-jose/jwt: expected content type to be JWT (cty header)"))
 			})
 
 			It("fails when response signature cannot be verified", func() {

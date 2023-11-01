@@ -8,9 +8,9 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-jose/go-jose/v3"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/square/go-jose.v2"
 )
 
 var _ = Describe("utils tests", func() {
@@ -188,7 +188,7 @@ var _ = Describe("utils tests", func() {
 			options.WithType("JWE")
 			_, err := newEncrypter(ctx, encKeyJwk, enc, alg, options)
 			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("square/go-jose: unknown/unsupported algorithm"))
+			Expect(err.Error()).To(Equal("go-jose/go-jose: unknown/unsupported algorithm"))
 		})
 	})
 
