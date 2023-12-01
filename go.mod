@@ -3,7 +3,7 @@ module github.com/qvik/go-oidc-mle
 go 1.20
 
 require (
-	github.com/coreos/go-oidc/v3 v3.7.0
+	github.com/coreos/go-oidc/v3 v3.8.0
 	github.com/go-jose/go-jose/v3 v3.0.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/onsi/ginkgo v1.16.5
