@@ -7,7 +7,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.30.0
+	github.com/onsi/gomega v1.31.1
 	github.com/pquerna/cachecontrol v0.2.0
 	golang.org/x/oauth2 v0.16.0
 )
