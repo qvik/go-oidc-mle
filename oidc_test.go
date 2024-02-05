@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-jose/go-jose/v3"
 	"github.com/go-jose/go-jose/v3/jwt"
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"

@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/coreos/go-oidc/v3 v3.9.0
 	github.com/go-jose/go-jose/v3 v3.0.1
-	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
 	github.com/pquerna/cachecontrol v0.2.0
