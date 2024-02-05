@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-jose/go-jose/v3"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
