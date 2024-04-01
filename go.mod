@@ -1,6 +1,8 @@
 module github.com/qvik/go-oidc-mle
 
-go 1.20
+go 1.21
+
+toolchain go1.22.1
 
 require (
 	github.com/coreos/go-oidc/v3 v3.10.0
