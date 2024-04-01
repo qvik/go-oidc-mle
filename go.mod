@@ -1,9 +1,11 @@
 module github.com/qvik/go-oidc-mle
 
-go 1.20
+go 1.21
+
+toolchain go1.22.1
 
 require (
-	github.com/coreos/go-oidc/v3 v3.9.0
+	github.com/coreos/go-oidc/v3 v3.10.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/onsi/ginkgo/v2 v2.17.1
@@ -13,6 +15,7 @@ require (
 )
 
 require (
+	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
