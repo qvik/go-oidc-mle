@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gofrs/uuid/v5 v5.2.0
-	github.com/onsi/ginkgo/v2 v2.19.0
+	github.com/onsi/ginkgo/v2 v2.19.1
 	github.com/onsi/gomega v1.34.1
 	github.com/pquerna/cachecontrol v0.2.0
 	golang.org/x/oauth2 v0.21.0
@@ -16,7 +16,7 @@ require (
 
 require (
 	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20240424215950-a892ee059fd6 // indirect
