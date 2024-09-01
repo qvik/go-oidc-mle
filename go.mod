@@ -9,7 +9,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gofrs/uuid/v5 v5.3.0
 	github.com/onsi/ginkgo/v2 v2.20.2
-	github.com/onsi/gomega v1.34.1
+	github.com/onsi/gomega v1.34.2
 	github.com/pquerna/cachecontrol v0.2.0
 	golang.org/x/oauth2 v0.22.0
 )
@@ -22,7 +22,6 @@ require (
 	github.com/google/pprof v0.0.0-20240827171923-fa2c70bbbfe5 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
