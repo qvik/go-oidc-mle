@@ -2,10 +2,10 @@
 
 [![GoDoc](https://godoc.org/github.com/qvik/go-oidc-mle?status.svg)](https://godoc.org/github.com/qvik/go-oidc-mle)
 
-This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://godoc.org/github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. The Finnish Transport and Communications Agency Traficom mandates message level encryption on electric identification and trust services. More information can be found from the [Requlation 72 on electronic identification and trust services](https://www.traficom.fi/en/regulations#%7B%22query%22%3A%2272%22%2C%22sort%22%3A%7B%22title%22%3A%22ASC%22%7D%2C%22limit%22%3A20%2C%22offset%22%3A0%2C%22filters%22%3A%7B%7D%7D).
+This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://godoc.org/github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. The Finnish Transport and Communications Agency Traficom mandates message level encryption on electric identification and trust services. More information can be found from the [Regulation 72 on electronic identification and trust services](https://www.traficom.fi/en/regulations#%7B%22query%22%3A%2272%22%2C%22sort%22%3A%7B%22title%22%3A%22ASC%22%7D%2C%22limit%22%3A20%2C%22offset%22%3A0%2C%22filters%22%3A%7B%7D%7D).
 
-- [Requlation 72 on electronic identification and trust services (pdf)](https://www.finlex.fi/data/normit/42947/M72A-2018-EN-v2.pdf)
-- [Explanatory notes to Requlation 72 (pdf)](https://www.finlex.fi/data/normit/42947/M72A-MPS-EN.pdf)
+- [Regulation 72 on electronic identification and trust services (pdf)](https://www.finlex.fi/data/normit/42947/M72A-2018-EN-v2.pdf)
+- [Explanatory notes to Regulation 72 (pdf)](https://www.finlex.fi/data/normit/42947/M72A-MPS-EN.pdf)
 
 ## Examples
 
@@ -25,7 +25,7 @@ go run main.go
 
 ## Usage
 
-Configuration is defined as follows. The example uses Signicat's demo account credentials and JWK. For real implementation you'll need your own credentials and key. The public key must be sent to the servicer provider.
+Configuration is defined as follows. The example uses Signicat's demo account credentials and JWK. For real implementation you'll need your own credentials and key. The public key must be sent to the service provider.
 
 ```go
 // These credentials are taken from here: https://github.com/signicat/OIDC-MLE/blob/master/py-ftn-example/ftn-mle-example.py
