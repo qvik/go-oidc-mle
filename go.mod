@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.23.0
 
 require (
-	github.com/coreos/go-oidc/v3 v3.11.0
+	github.com/coreos/go-oidc/v3 v3.12.0
 	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/gofrs/uuid/v5 v5.3.0
 	github.com/onsi/ginkgo/v2 v2.22.2
