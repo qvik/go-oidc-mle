@@ -9,7 +9,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/gofrs/uuid/v5 v5.3.2
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	github.com/pquerna/cachecontrol v0.2.0
 	golang.org/x/oauth2 v0.29.0
 )
