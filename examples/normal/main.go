@@ -15,7 +15,7 @@ import (
 	"github.com/qvik/go-oidc-mle"
 )
 
-// The payload we're expecting from the provider
+// User representing the payload we're expecting from the provider
 type User struct {
 	Subject    string `json:"sub"`
 	Name       string `json:"name"`

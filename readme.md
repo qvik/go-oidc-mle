@@ -2,14 +2,14 @@
 
 [![GoDoc](https://godoc.org/github.com/qvik/go-oidc-mle?status.svg)](https://godoc.org/github.com/qvik/go-oidc-mle)
 
-This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://godoc.org/github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with optional encrypted request object. The Finnish Transport and Communications Agency Traficom mandates message level encryption on electric identification and trust services. More information can be found from the [Regulation 72 on electronic identification and trust services](https://www.traficom.fi/en/regulations#%7B%22query%22%3A%2272%22%2C%22sort%22%3A%7B%22title%22%3A%22ASC%22%7D%2C%22limit%22%3A20%2C%22offset%22%3A0%2C%22filters%22%3A%7B%7D%7D).
+This library wraps [oauth2](https://godoc.org/golang.org/x/oauth2) and [go-oidc](https://godoc.org/github.com/coreos/go-oidc) libraries and implements OIDC authorization code flow with an optional encrypted request object. The Finnish Transport and Communications Agency Traficom mandates message level encryption on electric identification and trust services. More information can be found from the [Regulation 72 on electronic identification and trust services](https://www.traficom.fi/en/regulations#%7B%22query%22%3A%2272%22%2C%22sort%22%3A%7B%22title%22%3A%22ASC%22%7D%2C%22limit%22%3A20%2C%22offset%22%3A0%2C%22filters%22%3A%7B%7D%7D).
 
 - [Regulation 72 on electronic identification and trust services (pdf)](https://www.finlex.fi/data/normit/42947/M72A-2018-EN-v2.pdf)
 - [Explanatory notes to Regulation 72 (pdf)](https://www.finlex.fi/data/normit/42947/M72A-MPS-EN.pdf)
 
 ## Examples
 
-A simplified examples implementations of authorization code flow using [Signicat](https://signicat.com) as a provider can be found from [examples](https://github.com/qvik/go-oidc-mle/blob/master/examples) directory.
+A simplified example implementation of authorization code flow using [Signicat](https://signicat.com) as a provider can be found from [the examples](https://github.com/qvik/go-oidc-mle/blob/master/examples) directory.
 
 To run the example using MLE:
 ```bash
@@ -47,7 +47,7 @@ ctx := context.Background()
 client := oidc.Must(oidc.NewClientMLE(ctx, &config))
 ```
 
-To create authorization request one might need to provide some addition options. The example is for Signicat and defines that ftn-op-auth authentication method shall be used and the user interface language is Finnish. The state should be something that is not easy to guess such as UUID.
+To create authorization request, one might need to provide some addition options. The example is for Signicat and defines that ftn-op-auth authentication method shall be used and the user interface language is Finnish. The state should be something that is not easy to guess such as UUID.
 
 ```go
 state := "oneTimeStateHere"
@@ -68,7 +68,7 @@ The next step is to redirect the user to the authorization url. Once the user ha
 
 In the redirect uri handler the request should be validated. Namely, error and error_description query parameters should not be present. In addition, the state should match to the one specified as part of the authorization request. If nonce was specified as part of the authorization request, the id_token should contain the same nonce unmodified. If everything checks out you can proceed to exchanging the authorization code for token. Go-oidc-mle provides a convenience method HandleCallback which validates the request, nonce and state. Alternatively you can do the same manually.
 
-Define a type for the data you're expecting to receive from the user info endpoint of the service provider. The content depends on the scope that you specified. Once again the example below is for the scope that we specified in the config for Signicat.
+Define a type for the data you're expecting to receive from the user info endpoint of the service provider. The content depends on the scope that you specified. Once again, the example below is for the scope that we specified in the config for Signicat.
 ```go
 type User struct {
 	Subject    string `json:"sub"`
@@ -80,7 +80,7 @@ type User struct {
 }
 ```
 
-Exchange the authorization code for access token and request user info.
+Exchange the authorization code for an access token and request user info.
 ```go
 var userInfo User
 err = client.HandleCallback(state, nonce, req.URL.Query(), &userInfo)
@@ -99,7 +99,7 @@ if err != nil {
 log.Println(string(data))
 ```
 
-Congratulation, you've now successfully received the user information you requested.
+Congratulations, you've now successfully received the user information you requested.
 
 ## Documentation
 
@@ -110,7 +110,7 @@ Documentation for the libraries go-oidc-mle uses.
 
 ## Contributing
 
-All contributions are warmly welcome but please write tests for the changes. The existing tests have been written using [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](http://onsi.github.io/gomega/).
+All contributions are warmly welcome, but please write tests for the changes. The existing tests have been written using [Ginkgo](https://onsi.github.io/ginkgo/) and [Gomega](http://onsi.github.io/gomega/).
 
 To run the tests:
 ```bash
