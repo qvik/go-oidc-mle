@@ -1326,7 +1326,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
 			opts := map[string]interface{}{
-				"acr_values": fmt.Sprintf(acrValues),
+				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
 			url, err := client.AuthRequestURL(state, opts)
@@ -1371,7 +1371,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
 			opts := map[string]interface{}{
-				"acr_values": fmt.Sprintf(acrValues),
+				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
 			url, err := client.AuthRequestURL(state, opts)
@@ -1406,7 +1406,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
 			opts := map[string]interface{}{
-				"acr_values": fmt.Sprintf(acrValues),
+				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
 			url, err := client.AuthRequestURL(state, opts)
@@ -1430,7 +1430,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
 			opts := map[string]interface{}{
-				"acr_values": fmt.Sprintf(acrValues),
+				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
 			url, err := client.AuthRequestURL(state, opts)
