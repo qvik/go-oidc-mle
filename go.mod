@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	github.com/coreos/go-oidc/v3 v3.16.0
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/onsi/ginkgo/v2 v2.27.2
