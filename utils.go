@@ -40,7 +40,7 @@ func (m *mockEncrypter) Options() jose.EncrypterOptions {
 	return m.opts
 }
 
-// newEncrypted is a convenience method for creating a jose.Encrypter using a specified JWK.
+// newEncrypter is a convenience method for creating a jose.Encrypter using a specified JWK.
 func newEncrypter(ctx context.Context, key *jose.JSONWebKey, enc jose.ContentEncryption, alg jose.KeyAlgorithm, options jose.EncrypterOptions) (jose.Encrypter, error) {
 	encrypter, err := jose.NewEncrypter(enc, jose.Recipient{
 		Algorithm: alg,

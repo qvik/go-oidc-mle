@@ -193,6 +193,7 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}
 }
 
 // Verify verifies the signature of the token. Note that the possible nonce in
+// the token is not verified; use ExchangeWithNonce for nonce validation.
 func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
@@ -389,7 +390,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 
 	req, err := http.NewRequest("GET", endpoints.UserInfoURL, nil)
 	if err != nil {
-		return fmt.Errorf("unbale to create userinfo request: %v", err)
+		return fmt.Errorf("unable to create userinfo request: %v", err)
 	}
 
 	token, err := tokenSource.Token()

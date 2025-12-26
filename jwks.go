@@ -98,8 +98,8 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, e
 	}, nil
 }
 
-// updateKeys fetches the providers jwks from jwks_uri. The function respects
-// cache headers and caches the results for specified time period. updateKeys is
+// updateKeys fetches the provider's JWKS from jwks_uri. The function respects
+// cache headers and caches the results for the specified time period.
 func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Time, error) {
 	req, err := http.NewRequest("GET", jwksUri, nil)
 	if err != nil {
