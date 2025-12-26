@@ -372,7 +372,7 @@ func (o *OIDCClientEncrypted) ExchangeWithNonce(code, nonce string, options map[
 	return tokens, nil
 }
 
-// Represents the providers endpoints
+// providerEndpoints represents the provider's OIDC endpoints.
 type providerEndpoints struct {
 	AuthURL     string `json:"authorization_endpoint"`
 	TokenURL    string `json:"token_endpoint"`

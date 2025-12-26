@@ -81,7 +81,7 @@ func (r *RemoteKeyStore) updateKeys() error {
 }
 
 // providerRemoteKeys is a convenience method for fetching and unmarshaling
-// the provider jwks from the jwks_uri. Returns a JWSONWebKeySet containing
+// the provider JWKS from the jwks_uri. Returns a RemoteKeyStore containing
 // the keys.
 func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, error) {
 	keys, expiry, err := updateKeys(ctx, jwksUri)
