@@ -403,7 +403,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 	if err != nil {
 		return fmt.Errorf("unable to execute request: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
