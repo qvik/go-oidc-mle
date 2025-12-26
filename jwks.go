@@ -31,12 +31,10 @@ func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
 	// Let's refresh the keys if cached keys expire within the next 10 minutes
 	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
 	if tenMinutesFromNow.After(r.Expiry.Add(-1 * time.Second)) {
-		keys, expiry, err := updateKeys(r.Context, r.JwksURI)
+		err := r.updateKeys()
 		if err != nil {
 			return nil, err
 		}
-		r.Keys = keys
-		r.Expiry = expiry
 	}
 
 	for _, key := range r.Keys {
