@@ -262,6 +262,20 @@ var _ = Describe("OIDCClient tests", func() {
 			Expect(parsedUrl.Query().Get("client_id")).To(Equal(config.ClientId))
 			Expect(parsedUrl.Path).To(Equal("/oidc/authorize"))
 		})
+
+		It("returns an error for unsupported option type", func() {
+			state := generateId()
+			options := map[string]interface{}{
+				"acr_values":       "urn:signicat:oidc:method:ftn-op-auth",
+				"unsupported_type": 12345, // int is not supported
+			}
+			ctx := context.Background()
+			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			_, err := client.AuthRequestURL(state, options)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unknown request option type"))
+		})
 	})
 
 	Describe("Exchange", func() {
