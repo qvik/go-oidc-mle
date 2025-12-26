@@ -344,7 +344,7 @@ var _ = Describe("Jwks tests", func() {
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
-			expectedError := "unable to fetch keys Get \"https://example.com/oidc/jwks.json\": request failed"
+			expectedError := "unable to fetch keys: Get \"https://example.com/oidc/jwks.json\": request failed"
 			Expect(jwks).To(BeNil())
 			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))

@@ -101,18 +101,18 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, e
 func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Time, error) {
 	req, err := http.NewRequest("GET", jwksUri, nil)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("unable to create request: %v", err)
+		return nil, time.Time{}, fmt.Errorf("unable to create request: %w", err)
 	}
 
 	resp, err := doRequest(ctx, req)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("unable to fetch keys %v", err)
+		return nil, time.Time{}, fmt.Errorf("unable to fetch keys: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("unable to read response body: %v", err)
+		return nil, time.Time{}, fmt.Errorf("unable to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -122,13 +122,13 @@ func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Ti
 	var keySet jose.JSONWebKeySet
 	err = json.Unmarshal(body, &keySet)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("unable to unmarshal keys: %v", err)
+		return nil, time.Time{}, fmt.Errorf("unable to unmarshal keys: %w", err)
 	}
 
 	expiry := time.Now().UTC()
 	_, exp, err := cachecontrol.CachableResponse(req, resp, cachecontrol.Options{})
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("unable to parse response cache headers: %v", err)
+		return nil, time.Time{}, fmt.Errorf("unable to parse response cache headers: %w", err)
 	}
 	if exp.After(expiry) {
 		expiry = exp
