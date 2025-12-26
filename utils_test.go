@@ -90,7 +90,7 @@ var _ = Describe("utils tests", func() {
 			Expect(actual).To(Equal(&jsonWebEncryption))
 		})
 
-		It("correctly detects HTTP 300", func() {
+		It("EncryptWithAuthData returns error when encrypter has error set", func() {
 			expectedError := errors.New("test error")
 			encrypter.error = expectedError
 			actual, err := encrypter.EncryptWithAuthData([]byte("lorem ipsum"), nil)

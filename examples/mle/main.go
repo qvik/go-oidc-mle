@@ -43,7 +43,7 @@ func main() {
 	nonce := generateId()
 
 	opts := map[string]interface{}{
-		"acr_values": fmt.Sprintf("urn:signicat:oidc:method:ftn-op-auth"),
+		"acr_values": "urn:signicat:oidc:method:ftn-op-auth",
 		"ui_locales": "en",
 		"nonce":      nonce,
 	}

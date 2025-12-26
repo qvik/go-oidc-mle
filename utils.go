@@ -7,7 +7,11 @@ import (
 	"github.com/go-jose/go-jose/v3"
 )
 
-const EncrypterContextKey string = "EncrypterContextKey"
+// contextKey is a custom type for context keys to avoid collisions.
+type contextKey string
+
+// EncrypterContextKey is the context key for injecting a mock encrypter during testing.
+const EncrypterContextKey contextKey = "EncrypterContextKey"
 
 // Scope value that the client uses to request openid connect authentication
 const scopeOpenID string = "openid"
@@ -40,7 +44,7 @@ func (m *mockEncrypter) Options() jose.EncrypterOptions {
 	return m.opts
 }
 
-// newEncrypted is a convenience method for creating a jose.Encrypter using a specified JWK.
+// newEncrypter is a convenience method for creating a jose.Encrypter using a specified JWK.
 func newEncrypter(ctx context.Context, key *jose.JSONWebKey, enc jose.ContentEncryption, alg jose.KeyAlgorithm, options jose.EncrypterOptions) (jose.Encrypter, error) {
 	encrypter, err := jose.NewEncrypter(enc, jose.Recipient{
 		Algorithm: alg,

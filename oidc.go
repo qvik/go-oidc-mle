@@ -46,7 +46,7 @@ func NewClient(ctx context.Context, config *Config) (*OIDCClient, error) {
 	config.Scopes = addOpenIdToScope(config.Scopes)
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
+		return nil, fmt.Errorf("unable to initialize client: %w", err)
 	}
 
 	oidcConfig := &oidc.Config{
@@ -77,7 +77,7 @@ func NewClientMLE(ctx context.Context, config *Config) (*OIDCClientEncrypted, er
 	config.Scopes = addOpenIdToScope(config.Scopes)
 	oidcProvider, err := oidc.NewProvider(ctx, config.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("unable to initialize client: %v", err.Error())
+		return nil, fmt.Errorf("unable to initialize client: %w", err)
 	}
 
 	var endpoints providerEndpoints
@@ -185,7 +185,7 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}
 		case string:
 			opts = append(opts, oauth2.SetAuthURLParam(key, value.(string)))
 		default:
-			return "", errors.New(fmt.Sprintf("unknown request option type: '%T'", valueType))
+			return "", fmt.Errorf("unknown request option type: '%T'", valueType)
 		}
 	}
 
@@ -193,6 +193,7 @@ func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}
 }
 
 // Verify verifies the signature of the token. Note that the possible nonce in
+// the token is not verified; use ExchangeWithNonce for nonce validation.
 func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 	verifier := o.provider.Verifier(o.oidcConfig)
 	return verifier.Verify(o.ctx, token)
@@ -202,11 +203,11 @@ func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
 	userInfo, err := o.provider.UserInfo(o.ctx, token)
 	if err != nil {
-		return fmt.Errorf("unable to fetch user info: %v", err.Error())
+		return fmt.Errorf("unable to fetch user info: %w", err)
 	}
 	err = userInfo.Claims(&user)
 	if err != nil {
-		return fmt.Errorf("unable to marshal claims: %v", err.Error())
+		return fmt.Errorf("unable to marshal claims: %w", err)
 	}
 	return nil
 }
@@ -371,7 +372,7 @@ func (o *OIDCClientEncrypted) ExchangeWithNonce(code, nonce string, options map[
 	return tokens, nil
 }
 
-// Represents the providers endpoints
+// providerEndpoints represents the provider's OIDC endpoints.
 type providerEndpoints struct {
 	AuthURL     string `json:"authorization_endpoint"`
 	TokenURL    string `json:"token_endpoint"`
@@ -389,37 +390,37 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 
 	req, err := http.NewRequest("GET", endpoints.UserInfoURL, nil)
 	if err != nil {
-		return fmt.Errorf("unbale to create userinfo request: %v", err)
+		return fmt.Errorf("unable to create userinfo request: %w", err)
 	}
 
 	token, err := tokenSource.Token()
 	if err != nil {
-		return fmt.Errorf("unable to get token: %v", err)
+		return fmt.Errorf("unable to get token: %w", err)
 	}
 	token.SetAuthHeader(req)
 
 	response, err := doRequest(o.ctx, req)
 	if err != nil {
-		return fmt.Errorf("unable to execute request: %v", err)
+		return fmt.Errorf("unable to execute request: %w", err)
 	}
+	defer func() { _ = response.Body.Close() }()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return fmt.Errorf("unable to read response body: %v", err)
+		return fmt.Errorf("unable to read response body: %w", err)
 	}
-	defer response.Body.Close()
 	if !statusCodeIs2xx(response.StatusCode) {
 		return fmt.Errorf("unable to fetch user info, received status: %s", response.Status)
 	}
 
 	webToken, err := jwt.ParseSignedAndEncrypted(string(body))
 	if err != nil {
-		return fmt.Errorf("unable to parse encrypted response: %v", err)
+		return fmt.Errorf("unable to parse encrypted response: %w", err)
 	}
 
 	decryptedData, err := webToken.Decrypt(o.decryptionKey)
 	if err != nil {
-		return fmt.Errorf("unable to decrypt payload: %v", err)
+		return fmt.Errorf("unable to decrypt payload: %w", err)
 	}
 
 	verificationKey, err := o.remoteKeySet.ById(decryptedData.Headers[0].KeyID)

@@ -18,6 +18,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// errorReader is a mock io.ReadCloser that returns an error when Read is called.
+type errorReader struct {
+	err error
+}
+
+func (e *errorReader) Read(p []byte) (n int, err error) {
+	return 0, e.err
+}
+
+func (e *errorReader) Close() error {
+	return nil
+}
+
 var _ = Describe("Jwks tests", func() {
 	const uri = "https://example.com/oidc/jwks.json"
 
@@ -184,6 +197,33 @@ var _ = Describe("Jwks tests", func() {
 				Expect(err.Error()).To(Equal("key not found"))
 				Expect(actualSignKey).To(BeNil())
 			})
+
+			It("returns an error if updateKeys fails during refresh", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				numberOfCalls := 0
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					numberOfCalls++
+					if numberOfCalls == 1 {
+						// First call succeeds but with no cache-control (expires immediately)
+						headers := http.Header{
+							"Content-Type": {"application/json"},
+						}
+						return newMockResponse(http.StatusOK, headers, body), nil
+					}
+					// Second call fails
+					return nil, errors.New("network error")
+				})
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				// Keys are expired, so ByUse will try to refresh and fail
+				_, err = remoteKeys.ByUse("sig")
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("unable to fetch keys"))
+			})
 		})
 
 		Describe("ById", func() {
@@ -272,6 +312,33 @@ var _ = Describe("Jwks tests", func() {
 				Expect(err.Error()).To(Equal("key not found"))
 				Expect(actualSignKey).To(BeNil())
 			})
+
+			It("returns an error if updateKeys fails during refresh", func() {
+				body := fmt.Sprintf(`{"keys":[%s]}`, signKeyMarshaled)
+				numberOfCalls := 0
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					numberOfCalls++
+					if numberOfCalls == 1 {
+						// First call succeeds but with no cache-control (expires immediately)
+						headers := http.Header{
+							"Content-Type": {"application/json"},
+						}
+						return newMockResponse(http.StatusOK, headers, body), nil
+					}
+					// Second call fails
+					return nil, errors.New("network error")
+				})
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				// Keys are expired, so ById will try to refresh and fail
+				_, err = remoteKeys.ById(signKeyId)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("unable to fetch keys"))
+			})
 		})
 	})
 
@@ -344,7 +411,7 @@ var _ = Describe("Jwks tests", func() {
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
 			jwks, expiry, err := updateKeys(ctxWithClient, uri)
 
-			expectedError := "unable to fetch keys Get \"https://example.com/oidc/jwks.json\": request failed"
+			expectedError := "unable to fetch keys: Get \"https://example.com/oidc/jwks.json\": request failed"
 			Expect(jwks).To(BeNil())
 			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
@@ -369,6 +436,29 @@ var _ = Describe("Jwks tests", func() {
 			Expect(err).NotTo(BeNil())
 			Expect(expiry).To(Equal(time.Time{}))
 			Expect(err.Error()).To(Equal(expectedError))
+		})
+
+		It("fails when response body cannot be read", func() {
+			mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+				headers := http.Header{
+					"Content-Type": {"application/json"},
+				}
+				return &http.Response{
+					Status:     http.StatusText(http.StatusOK),
+					StatusCode: http.StatusOK,
+					Header:     headers,
+					Body:       &errorReader{err: errors.New("read error")},
+				}, nil
+			})
+
+			ctx := context.Background()
+			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+
+			Expect(jwks).To(BeNil())
+			Expect(err).NotTo(BeNil())
+			Expect(expiry).To(Equal(time.Time{}))
+			Expect(err.Error()).To(ContainSubstring("unable to read response body"))
 		})
 
 		It("fails when response cache headers cannot be parsed", func() {

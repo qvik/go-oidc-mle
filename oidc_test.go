@@ -262,6 +262,20 @@ var _ = Describe("OIDCClient tests", func() {
 			Expect(parsedUrl.Query().Get("client_id")).To(Equal(config.ClientId))
 			Expect(parsedUrl.Path).To(Equal("/oidc/authorize"))
 		})
+
+		It("returns an error for unsupported option type", func() {
+			state := generateId()
+			options := map[string]interface{}{
+				"acr_values":       "urn:signicat:oidc:method:ftn-op-auth",
+				"unsupported_type": 12345, // int is not supported
+			}
+			ctx := context.Background()
+			client := Must(NewClient(context.WithValue(ctx, oauth2.HTTPClient, mockClient), &config))
+
+			_, err := client.AuthRequestURL(state, options)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("unknown request option type"))
+		})
 	})
 
 	Describe("Exchange", func() {
@@ -305,7 +319,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			now := time.Now().UTC()
 			in10mins := time.Now().UTC().Add(10 * time.Minute)
@@ -510,7 +524,7 @@ var _ = Describe("OIDCClient tests", func() {
 			keyId := generateId()
 			key, _ := rsa.GenerateKey(rand.Reader, 2048)
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			now := time.Now().UTC()
 			in10mins := time.Now().UTC().Add(10 * time.Minute)
@@ -605,7 +619,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 			nonce := generateId()
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
@@ -752,7 +766,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			now := time.Now().UTC()
 			in10mins := time.Now().UTC().Add(10 * time.Minute)
@@ -847,7 +861,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			now := time.Now().UTC()
 			in10mins := time.Now().UTC().Add(10 * time.Minute)
@@ -930,7 +944,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -985,7 +999,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -1029,7 +1043,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -1072,7 +1086,7 @@ var _ = Describe("OIDCClient tests", func() {
 			key, err := rsa.GenerateKey(rand.Reader, 2048)
 			Expect(err).To(BeNil())
 			keyJWK := &jose.JSONWebKey{Key: key.Public(), KeyID: keyId, Algorithm: "RS256", Use: "sig"}
-			keyJWKSMarshaled, err := keyJWK.MarshalJSON()
+			keyJWKSMarshaled, _ := keyJWK.MarshalJSON()
 
 			mockClient = newMockClient(func(req *http.Request) (*http.Response, error) {
 				headers := http.Header{
@@ -1297,7 +1311,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				ClientSecret: "exampleClientSecret",
 				Endpoint:     "https://example.com/oidc",
 				RedirectUri:  "https://example.com/redirect",
-				LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+				LocalJWK:     string(localEncKeyMarshaled),
 				Scopes:       []string{"profile", "signicat.national_id"},
 			}
 
@@ -1514,7 +1528,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				ClientSecret: "exampleClientSecret",
 				Endpoint:     "https://example.com/oidc",
 				RedirectUri:  "https://example.com/redirect",
-				LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+				LocalJWK:     string(localEncKeyMarshaled),
 				Scopes:       []string{"profile", "signicat.national_id"},
 			}
 
@@ -2075,7 +2089,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 					ClientSecret: "exampleClientSecret",
 					Endpoint:     "https://example.com/oidc",
 					RedirectUri:  "https://example.com/redirect",
-					LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+					LocalJWK:     string(localEncKeyMarshaled),
 					Scopes:       []string{"profile", "signicat.national_id"},
 				}
 			})
@@ -2496,7 +2510,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 					ClientSecret: "exampleClientSecret",
 					Endpoint:     "https://example.com/oidc",
 					RedirectUri:  "https://example.com/redirect",
-					LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+					LocalJWK:     string(localEncKeyMarshaled),
 					Scopes:       []string{"profile", "signicat.national_id"},
 				}
 			})
@@ -2939,7 +2953,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 				ClientSecret: "exampleClientSecret",
 				Endpoint:     "https://example.com/oidc",
 				RedirectUri:  "https://example.com/redirect",
-				LocalJWK:     fmt.Sprintf(`%s`, string(localEncKeyMarshaled)),
+				LocalJWK:     string(localEncKeyMarshaled),
 				Scopes:       []string{"profile", "signicat.national_id"},
 			}
 		})
