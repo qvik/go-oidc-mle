@@ -1,8 +1,6 @@
 module github.com/qvik/go-oidc-mle
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0
@@ -11,7 +9,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/pquerna/cachecontrol v0.2.0
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
