@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0
-	github.com/go-jose/go-jose/v3 v3.0.4
+	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
