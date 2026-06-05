@@ -22,10 +22,10 @@ import (
 type OIDCInterface interface {
 	Exchange(string, map[string]string) (*Tokens, error)
 	ExchangeWithNonce(string, string, map[string]string) (*Tokens, error)
-	AuthRequestURL(string, map[string]interface{}) (string, error)
+	AuthRequestURL(string, map[string]any) (string, error)
 	Verify(string) (*oidc.IDToken, error)
-	UserInfo(oauth2.TokenSource, interface{}) error
-	HandleCallback(string, string, url.Values, interface{}) error
+	UserInfo(oauth2.TokenSource, any) error
+	HandleCallback(string, string, url.Values, any) error
 }
 
 // Must is a convenience function to make sure that the OIDC client is
@@ -175,7 +175,7 @@ func (o *OIDCClient) ExchangeWithNonce(code, nonce string, options map[string]st
 }
 
 // AuthRequestURL returns the URL for authorization request.
-func (o *OIDCClient) AuthRequestURL(state string, options map[string]interface{}) (string, error) {
+func (o *OIDCClient) AuthRequestURL(state string, options map[string]any) (string, error) {
 	var opts []oauth2.AuthCodeOption
 	for key, value := range options {
 		switch valueType := value.(type) {
@@ -200,7 +200,7 @@ func (o *OIDCClient) Verify(token string) (*oidc.IDToken, error) {
 }
 
 // UserInfo fetches user information from provider's user info endpoint.
-func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error {
+func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user any) error {
 	userInfo, err := o.provider.UserInfo(o.ctx, token)
 	if err != nil {
 		return fmt.Errorf("unable to fetch user info: %w", err)
@@ -215,7 +215,7 @@ func (o *OIDCClient) UserInfo(token oauth2.TokenSource, user interface{}) error 
 // HandleCallback is a convenience function which exchanges the authorization
 // code to token and then uses the token to request user information from user
 // info endpoint. The implementation does not use message level encryption.
-func (o *OIDCClient) HandleCallback(state, nonce string, queryParams url.Values, user interface{}) error {
+func (o *OIDCClient) HandleCallback(state, nonce string, queryParams url.Values, user any) error {
 	if len(queryParams.Get("error")) > 0 {
 		err := queryParams.Get("error")
 		errDescription := queryParams.Get("error_description")
@@ -265,7 +265,7 @@ type OIDCClientEncrypted struct {
 }
 
 // AuthRequestURL returns the authorization request URL with encrypted request object.
-func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]interface{}) (string, error) {
+func (o *OIDCClientEncrypted) AuthRequestURL(state string, opts map[string]any) (string, error) {
 	mandatoryParams := map[string]string{
 		"response_type": "code",
 		"client_id":     o.oauth2Config.ClientID,
@@ -381,7 +381,7 @@ type providerEndpoints struct {
 }
 
 // UserInfo fetches user information from provider's user info endpoint.
-func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destination interface{}) error {
+func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destination any) error {
 	var endpoints providerEndpoints
 	err := o.provider.Claims(&endpoints)
 	if err != nil {
@@ -437,7 +437,7 @@ func (o *OIDCClientEncrypted) UserInfo(tokenSource oauth2.TokenSource, destinati
 // HandleCallback is a convenience function which exchanges the authorization
 // code to token and then uses the token to request user information from
 // user info endpoint. The implementation uses message level encryption.
-func (o *OIDCClientEncrypted) HandleCallback(state, nonce string, queryParams url.Values, user interface{}) error {
+func (o *OIDCClientEncrypted) HandleCallback(state, nonce string, queryParams url.Values, user any) error {
 	if len(queryParams.Get("error")) > 0 {
 		err := queryParams.Get("error")
 		errDescription := queryParams.Get("error_description")
