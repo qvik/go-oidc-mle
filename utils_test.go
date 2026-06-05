@@ -44,7 +44,7 @@ var _ = Describe("utils tests", func() {
 			options           jose.EncrypterOptions
 		)
 		BeforeEach(func() {
-			extraHeaders := map[jose.HeaderKey]interface{}{
+			extraHeaders := map[jose.HeaderKey]any{
 				jose.HeaderContentType:           "testing",
 				jose.HeaderKey("myCustomHeader"): "xyz",
 				jose.HeaderType:                  "JWE",
@@ -147,7 +147,7 @@ var _ = Describe("utils tests", func() {
 		})
 
 		It("uses the encrypter in context if one is present", func() {
-			extraHeaders := map[jose.HeaderKey]interface{}{
+			extraHeaders := map[jose.HeaderKey]any{
 				jose.HeaderContentType:           "foo/bar",
 				jose.HeaderKey("myCustomHeader"): "xyz",
 			}

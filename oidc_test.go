@@ -214,7 +214,7 @@ var _ = Describe("OIDCClient tests", func() {
 	Describe("AuthRequestURL", func() {
 		It("returns authorization request url with correct parameters", func() {
 			state := generateId()
-			options := map[string]interface{}{
+			options := map[string]any{
 				"acr_values": "urn:signicat:oidc:method:ftn-op-auth",
 				"ui_locales": "fi",
 			}
@@ -239,7 +239,7 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("returns authorization request url with complex parameters", func() {
 			state := generateId()
-			options := map[string]interface{}{
+			options := map[string]any{
 				"acr_values":  "urn:signicat:oidc:method:ftn-op-auth",
 				"ui_locales":  "fi",
 				"login_hints": []string{"birthday-121212", "phoneno-nnnnnnnn"},
@@ -265,7 +265,7 @@ var _ = Describe("OIDCClient tests", func() {
 
 		It("returns an error for unsupported option type", func() {
 			state := generateId()
-			options := map[string]interface{}{
+			options := map[string]any{
 				"acr_values":       "urn:signicat:oidc:method:ftn-op-auth",
 				"unsupported_type": 12345, // int is not supported
 			}
@@ -1339,7 +1339,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
-			opts := map[string]interface{}{
+			opts := map[string]any{
 				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
@@ -1384,7 +1384,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
-			opts := map[string]interface{}{
+			opts := map[string]any{
 				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
@@ -1419,7 +1419,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
-			opts := map[string]interface{}{
+			opts := map[string]any{
 				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
@@ -1443,7 +1443,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 
 			acrValues := "urn:signicat:oidc:method:ftn-op-auth"
 			state := generateId()
-			opts := map[string]interface{}{
+			opts := map[string]any{
 				"acr_values": acrValues,
 				"ui_locales": "en",
 			}
@@ -3148,7 +3148,7 @@ var _ = Describe("OIDCClientEncrypted tests", func() {
 	})
 })
 
-func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims interface{}) (string, error) {
+func buildSignedJWTToken(key *rsa.PrivateKey, keyId string, claims any) (string, error) {
 	signerOpts := jose.SignerOptions{}
 	signerOpts.WithType("JWT")
 	signerOpts.WithHeader("kid", keyId)

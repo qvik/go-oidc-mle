@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	"github.com/go-jose/go-jose/v3"
 )
@@ -70,10 +71,8 @@ func statusCodeIs2xx(statusCode int) bool {
 
 // addOpenIdToScope adds "openid" to the scope if not present
 func addOpenIdToScope(scope []string) []string {
-	for _, value := range scope {
-		if value == scopeOpenID {
-			return scope
-		}
+	if slices.Contains(scope, scopeOpenID) {
+		return scope
 	}
 
 	return append([]string{scopeOpenID}, scope...)
