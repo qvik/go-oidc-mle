@@ -28,38 +28,28 @@ type RemoteKeyStore struct {
 // ByUse returns a key from RemoteKeyStore by use. If the keystore contains
 // multiple keys with same use then first key will be returned.
 func (r *RemoteKeyStore) ByUse(use string) (*jose.JSONWebKey, error) {
-	// Let's refresh the keys if cached keys expire within the next 10 minutes
-	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
-	if tenMinutesFromNow.After(r.Expiry.Add(-1 * time.Second)) {
-		err := r.updateKeys()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for _, key := range r.Keys {
-		if key.Use == use {
-			return &key, nil
-		}
-	}
-
-	return nil, errors.New("key not found")
+	return r.find(func(key jose.JSONWebKey) bool { return key.Use == use })
 }
 
 // ById returns a key from RemoteKeyStore by key id. If the RemoteKeyStore
 // contains multiple keys with same id then first matching key is returned.
 func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
-	// Let's refresh the keys if cached keys expire within the next 10 minutes
-	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
-	if tenMinutesFromNow.After(r.Expiry) {
-		err := r.updateKeys()
-		if err != nil {
-			return nil, err
-		}
+	return r.find(func(key jose.JSONWebKey) bool { return key.KeyID == kid })
+}
+
+// find refreshes the keys if needed and returns the first key matching match.
+// The returned key is a copy, so it stays valid after the next refresh.
+func (r *RemoteKeyStore) find(match func(jose.JSONWebKey) bool) (*jose.JSONWebKey, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if err := r.refreshIfExpiring(); err != nil {
+		return nil, err
 	}
 
-	for _, key := range r.Keys {
-		if key.KeyID == kid {
+	for i := range r.Keys {
+		if match(r.Keys[i]) {
+			key := r.Keys[i]
 			return &key, nil
 		}
 	}
@@ -67,11 +57,20 @@ func (r *RemoteKeyStore) ById(kid string) (*jose.JSONWebKey, error) {
 	return nil, errors.New("key not found")
 }
 
-// updateKeys updates the keys and expiration in RemoteKeyStore.
+// refreshIfExpiring refreshes the cached keys if they expire within the next
+// 10 minutes. The caller must hold r.mutex.
+func (r *RemoteKeyStore) refreshIfExpiring() error {
+	tenMinutesFromNow := time.Now().UTC().Add(10 * time.Minute)
+	if tenMinutesFromNow.After(r.Expiry) {
+		return r.updateKeys()
+	}
+	return nil
+}
+
+// updateKeys updates the keys and expiration in RemoteKeyStore. The caller
+// must hold r.mutex.
 func (r *RemoteKeyStore) updateKeys() error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	keys, expiry, err := updateKeys(r.Context, r.JwksURI)
+	keys, expiry, err := fetchKeys(r.Context, r.JwksURI)
 	if err != nil {
 		return err
 	}
@@ -84,7 +83,7 @@ func (r *RemoteKeyStore) updateKeys() error {
 // the provider JWKS from the jwks_uri. Returns a RemoteKeyStore containing
 // the keys.
 func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, error) {
-	keys, expiry, err := updateKeys(ctx, jwksUri)
+	keys, expiry, err := fetchKeys(ctx, jwksUri)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +95,9 @@ func providerRemoteKeys(ctx context.Context, jwksUri string) (*RemoteKeyStore, e
 	}, nil
 }
 
-// updateKeys fetches the provider's JWKS from jwks_uri. The function respects
-// cache headers and caches the results for the specified time period.
-func updateKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Time, error) {
+// fetchKeys fetches the provider's JWKS from jwks_uri. The function respects
+// cache headers and returns the expiry for the specified time period.
+func fetchKeys(ctx context.Context, jwksUri string) ([]jose.JSONWebKey, time.Time, error) {
 	req, err := http.NewRequest("GET", jwksUri, nil)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("unable to create request: %w", err)
