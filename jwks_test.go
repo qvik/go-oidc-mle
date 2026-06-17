@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-jose/go-jose/v3"
@@ -340,9 +341,55 @@ var _ = Describe("Jwks tests", func() {
 				Expect(err.Error()).To(ContainSubstring("unable to fetch keys"))
 			})
 		})
+
+		Describe("concurrent access", func() {
+			It("is safe to read and refresh keys from multiple goroutines", func() {
+				body := fmt.Sprintf(`{"keys":[%s, %s]}`, signKeyMarshaled, encKeyMarshaled)
+				// No Cache-Control header means the keys expire immediately, so
+				// every lookup triggers a refresh (a write to the key store).
+				// Combined with concurrent readers this exercises the read/write
+				// path that must be serialised by the mutex. The round trip uses
+				// no shared mutable state, so it is itself safe to call
+				// concurrently.
+				mockClient := newMockClient(func(req *http.Request) (*http.Response, error) {
+					headers := http.Header{
+						"Content-Type": {"application/json"},
+					}
+					return newMockResponse(http.StatusOK, headers, body), nil
+				})
+
+				ctx := context.Background()
+				ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
+				remoteKeys, err := providerRemoteKeys(ctxWithClient, uri)
+				Expect(err).To(BeNil())
+
+				const goroutines = 16
+				const iterations = 50
+				var wg sync.WaitGroup
+				wg.Add(goroutines)
+				for g := 0; g < goroutines; g++ {
+					go func(g int) {
+						defer GinkgoRecover()
+						defer wg.Done()
+						for i := 0; i < iterations; i++ {
+							if (g+i)%2 == 0 {
+								key, err := remoteKeys.ByUse("enc")
+								Expect(err).To(BeNil())
+								Expect(key.KeyID).To(Equal(encKeyId))
+							} else {
+								key, err := remoteKeys.ById(signKeyId)
+								Expect(err).To(BeNil())
+								Expect(key.KeyID).To(Equal(signKeyId))
+							}
+						}
+					}(g)
+				}
+				wg.Wait()
+			})
+		})
 	})
 
-	Describe("updateKeys", func() {
+	Describe("fetchKeys", func() {
 		It("updates the keys successfully", func() {
 			signKeyId := generateId()
 			signKey, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -383,7 +430,7 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+			jwks, expiry, err := fetchKeys(ctxWithClient, uri)
 
 			now := time.Now().UTC()
 			Expect(jwks).To(Equal(expectedKeySet.Keys))
@@ -393,7 +440,7 @@ var _ = Describe("Jwks tests", func() {
 
 		It("fails when request cannot be created", func() {
 			invalidUri := string([]byte{0x7f})
-			jwks, expiry, err := updateKeys(context.TODO(), invalidUri)
+			jwks, expiry, err := fetchKeys(context.TODO(), invalidUri)
 			invalidCharacter := "\u007f"
 			expectedError := fmt.Sprintf("unable to create request: parse %q: net/url: invalid control character in URL", invalidCharacter)
 			Expect(jwks).To(BeNil())
@@ -409,7 +456,7 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+			jwks, expiry, err := fetchKeys(ctxWithClient, uri)
 
 			expectedError := "unable to fetch keys: Get \"https://example.com/oidc/jwks.json\": request failed"
 			Expect(jwks).To(BeNil())
@@ -429,7 +476,7 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+			jwks, expiry, err := fetchKeys(ctxWithClient, uri)
 
 			expectedError := fmt.Sprintf("unable to get keys: %s %s", http.StatusText(http.StatusInternalServerError), body)
 			Expect(jwks).To(BeNil())
@@ -453,7 +500,7 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+			jwks, expiry, err := fetchKeys(ctxWithClient, uri)
 
 			Expect(jwks).To(BeNil())
 			Expect(err).NotTo(BeNil())
@@ -498,7 +545,7 @@ var _ = Describe("Jwks tests", func() {
 
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+			jwks, expiry, err := fetchKeys(ctxWithClient, uri)
 
 			expectedError := `unable to parse response cache headers: strconv.ParseUint: parsing "INVALID": invalid syntax`
 			Expect(jwks).To(BeNil())
@@ -549,7 +596,7 @@ var _ = Describe("Jwks tests", func() {
 			now := time.Now().UTC()
 			ctx := context.Background()
 			ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, mockClient)
-			jwks, expiry, err := updateKeys(ctxWithClient, uri)
+			jwks, expiry, err := fetchKeys(ctxWithClient, uri)
 
 			Expect(jwks).To(Equal(expectedKeySet.Keys))
 			Expect(expiry).Should(BeTemporally(">", now))
