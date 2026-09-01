@@ -6,7 +6,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/go-jose/go-jose/v3 v3.0.5
 	github.com/gofrs/uuid/v5 v5.5.1
-	github.com/onsi/ginkgo/v2 v2.32.0
+	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.43.0
 	github.com/pquerna/cachecontrol v0.2.0
 	golang.org/x/oauth2 v0.36.0
