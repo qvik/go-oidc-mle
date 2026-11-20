@@ -15,4 +15,7 @@ updates:
       day: 'monday'
       time: '07:00'
       timezone: 'Europe/Helsinki'
-
+    groups:
+      github-actions:
+        patterns:
+          - '*'
