@@ -29,10 +29,26 @@ jobs:
         uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.mod
+      - name: Check go.mod and go.sum are tidy
+        run: go mod tidy -diff
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9.3.0
         with:
           version: latest
+
+  vulncheck:
+    name: Vulnerability check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   test:
     name: Test (${{ matrix.platform }})
