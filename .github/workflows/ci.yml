@@ -50,7 +50,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v7.0.0
         with:
-          go-version-file: go.mod
+          # Scan with the latest patched toolchain, not go.mod's minimum
+          go-version: stable
       - name: Run govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
