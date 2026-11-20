@@ -51,10 +51,12 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   test:
-    name: Test (${{ matrix.platform }})
+    name: Test (${{ matrix.platform }}, Go ${{ matrix.go }})
     strategy:
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
+        # go.mod = minimum supported version, stable = latest Go release
+        go: [go.mod, stable]
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 5
     steps:
@@ -63,6 +65,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v7.0.0
         with:
-          go-version-file: go.mod
+          go-version-file: ${{ matrix.go == 'go.mod' && 'go.mod' || '' }}
+          go-version: ${{ matrix.go != 'go.mod' && matrix.go || '' }}
       - name: Run tests
         run: go test -race -cover ./...
